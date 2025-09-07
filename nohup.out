@@ -1,0 +1,44 @@
+[2025-09-07 12:03:38 +0800] [2953016] [INFO] Starting gunicorn 23.0.0
+[2025-09-07 12:03:38 +0800] [2953016] [INFO] Listening at: http://0.0.0.0:9999 (2953016)
+[2025-09-07 12:03:38 +0800] [2953016] [INFO] Using worker: sync
+[2025-09-07 12:03:38 +0800] [2953024] [INFO] Booting worker with pid: 2953024
+[2025-09-07 12:03:38 +0800] [2953025] [INFO] Booting worker with pid: 2953025
+[2025-09-07 12:03:38 +0800] [2953026] [INFO] Booting worker with pid: 2953026
+[2025-09-07 12:03:38 +0800] [2953028] [INFO] Booting worker with pid: 2953028
+[2025-09-07 12:03:42 +0800] [2953016] [INFO] Handling signal: int
+[2025-09-07 12:03:43 +0800] [2953026] [INFO] Worker exiting (pid: 2953026)
+[2025-09-07 12:03:43 +0800] [2953024] [INFO] Worker exiting (pid: 2953024)
+[2025-09-07 12:03:43 +0800] [2953025] [INFO] Worker exiting (pid: 2953025)
+[2025-09-07 12:03:43 +0800] [2953028] [INFO] Worker exiting (pid: 2953028)
+[2025-09-07 12:03:43 +0800] [2953016] [INFO] Shutting down: Master
+[2025-09-07 12:03:47 +0800] [2953082] [INFO] Starting gunicorn 23.0.0
+[2025-09-07 12:03:47 +0800] [2953082] [INFO] Listening at: http://0.0.0.0:9999 (2953082)
+[2025-09-07 12:03:47 +0800] [2953082] [INFO] Using worker: sync
+[2025-09-07 12:03:47 +0800] [2953088] [INFO] Booting worker with pid: 2953088
+[2025-09-07 12:03:47 +0800] [2953089] [INFO] Booting worker with pid: 2953089
+[2025-09-07 12:03:47 +0800] [2953090] [INFO] Booting worker with pid: 2953090
+[2025-09-07 12:03:47 +0800] [2953091] [INFO] Booting worker with pid: 2953091
+[2025-09-07 12:22:41 +0800] [2953082] [CRITICAL] WORKER TIMEOUT (pid:2953091)
+[2025-09-07 12:22:41 +0800] [2953091] [ERROR] Error handling request (no URI read)
+Traceback (most recent call last):
+  File "/home/wwd/python_projects/config_txt/.venv/lib/python3.10/site-packages/gunicorn/workers/sync.py", line 133, in handle
+    req = next(parser)
+  File "/home/wwd/python_projects/config_txt/.venv/lib/python3.10/site-packages/gunicorn/http/parser.py", line 41, in __next__
+    self.mesg = self.mesg_class(self.cfg, self.unreader, self.source_addr, self.req_count)
+  File "/home/wwd/python_projects/config_txt/.venv/lib/python3.10/site-packages/gunicorn/http/message.py", line 259, in __init__
+    super().__init__(cfg, unreader, peer_addr)
+  File "/home/wwd/python_projects/config_txt/.venv/lib/python3.10/site-packages/gunicorn/http/message.py", line 60, in __init__
+    unused = self.parse(self.unreader)
+  File "/home/wwd/python_projects/config_txt/.venv/lib/python3.10/site-packages/gunicorn/http/message.py", line 271, in parse
+    self.get_data(unreader, buf, stop=True)
+  File "/home/wwd/python_projects/config_txt/.venv/lib/python3.10/site-packages/gunicorn/http/message.py", line 262, in get_data
+    data = unreader.read()
+  File "/home/wwd/python_projects/config_txt/.venv/lib/python3.10/site-packages/gunicorn/http/unreader.py", line 36, in read
+    d = self.chunk()
+  File "/home/wwd/python_projects/config_txt/.venv/lib/python3.10/site-packages/gunicorn/http/unreader.py", line 63, in chunk
+    return self.sock.recv(self.mxchunk)
+  File "/home/wwd/python_projects/config_txt/.venv/lib/python3.10/site-packages/gunicorn/workers/base.py", line 204, in handle_abort
+    sys.exit(1)
+SystemExit: 1
+[2025-09-07 12:22:41 +0800] [2953091] [INFO] Worker exiting (pid: 2953091)
+[2025-09-07 12:22:41 +0800] [2954589] [INFO] Booting worker with pid: 2954589
