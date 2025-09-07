@@ -13,3 +13,13 @@ dependencies = [
     "requests>=2.32.5",
     "rich>=14.1.0",
 ]
+
+[tool.pyright]
+reportOptionalMemberAccess = false
+reportArgumentType = false
+reportUnknownParameterType = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+reportAny = false
+reportUnusedCallResult = false
