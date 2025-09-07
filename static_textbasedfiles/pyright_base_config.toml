@@ -6,3 +6,4 @@ reportUnknownMemberType = false
 reportUnknownVariableType = false
 reportUnknownArgumentType = false
 reportAny = false
+reportUnusedCallResult = false
