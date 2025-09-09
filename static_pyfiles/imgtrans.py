@@ -4,12 +4,21 @@
 #     "pillow>=11.0.0",
 # ]
 # ///
+
 """
-Image Conversion Tool - uv run utility
-Usage:
-  uv run img-convert.py --input photo.jpg --format webp
-  uv run img-convert.py --input *.png --resize 800x600
-  uv run img-convert.py --input photo.jpg --compress 80
+Image conversion and compression utility
+
+A batch image converter supporting multiple formats (JPEG, PNG, WebP, BMP, TIFF)
+with resize, compression, and EXIF orientation correction capabilities.
+
+Version: 1.0.0
+Category: Media
+Author: Config-Txt Project
+
+Usage Examples:
+    uv run imgtrans.py --input photo.jpg --format webp
+    uv run imgtrans.py --input *.png --resize 800x600
+    uv run imgtrans.py --input photo.jpg --compress --quality 80
 """
 
 import argparse

@@ -5,6 +5,23 @@
 # ]
 # ///
 
+"""
+Beautiful calendar printer with highlighting features
+
+A command-line calendar tool that displays formatted monthly or yearly calendars
+with current day highlighting and customizable week start options.
+
+Version: 1.0.0
+Category: Utility
+Author: Config-Txt Project
+
+Usage Examples:
+    uv run cld.py
+    uv run cld.py -m 6 -h
+    uv run cld.py -a -h
+    uv run cld.py -y 2025 -m 1-3 -s
+"""
+
 import calendar
 import click
 import re

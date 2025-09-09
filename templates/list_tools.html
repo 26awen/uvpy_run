@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available Python Tools</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 2em;
+        }
+        
+        .header p {
+            margin: 0;
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .tool-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border-left: 4px solid #007bff;
+        }
+        
+        .tool-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .tool-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .tool-description {
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 1em;
+        }
+        
+        .tool-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            color: #555;
+        }
+        
+        .meta-label {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        
+        .meta-value {
+            color: #007bff;
+        }
+        
+        .tool-links {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 0.9em;
+            transition: background-color 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+        
+        .usage-info {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .usage-info h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .usage-info code {
+            background-color: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e83e8c;
+        }
+        
+        .no-tools {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+            
+            .tools-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .tool-card {
+                padding: 15px;
+            }
+            
+            .tool-meta {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .tool-links {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Available Python Tools</h1>
+        <p>These Python scripts can be executed remotely using <code>uv run</code></p>
+    </div>
+    
+    {% if tools %}
+    <div class="tools-grid">
+        {% for tool in tools %}
+        <div class="tool-card">
+            <div class="tool-name">{{ tool.filename }}</div>
+            <div class="tool-description">{{ tool.description }}</div>
+            
+            <div class="tool-meta">
+                <div class="meta-item">
+                    <span class="meta-label">Version:</span>
+                    <span class="meta-value">{{ tool.version }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Category:</span>
+                    <span class="meta-value">{{ tool.category }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Author:</span>
+                    <span class="meta-value">{{ tool.author }}</span>
+                </div>
+            </div>
+            
+            <div class="tool-links">
+                <a href="{{ tool.url }}" class="btn btn-primary" target="_blank">Download</a>
+                <a href="#" class="btn btn-secondary" onclick="copyToClipboard('uv run {{ request.url_root }}{{ tool.filename[1:] if tool.filename.startswith('/') else tool.filename }}')">Copy uv command</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-tools">
+        <p>No Python tools found in the static_pyfiles directory.</p>
+    </div>
+    {% endif %}
+    
+    <div class="usage-info">
+        <h3>How to use these tools</h3>
+        <p>You can run any of these Python scripts remotely using uv:</p>
+        <p><code>uv run {{ request.url_root }}script_name.py</code></p>
+        <p>For example: <code>uv run {{ request.url_root }}demo.py</code></p>
+        <p>Each tool includes built-in help - try adding <code>--help</code> to see available options.</p>
+    </div>
+    
+    <script>
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function() {
+                // Simple alert for now
+                alert('Command copied to clipboard!');
+            }, function(err) {
+                console.error('Could not copy text: ', err);
+                alert('Failed to copy command. Please copy manually: ' + text);
+            });
+        }
+    </script>
+</body>
+</html>

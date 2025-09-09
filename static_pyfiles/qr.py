@@ -6,6 +6,22 @@
 # ]
 # ///
 
+"""
+Generate QR codes with customizable styles and options
+
+A command-line utility for creating QR codes from text input.
+Supports square and rounded styles with adjustable size settings.
+
+Version: 1.0.0
+Category: Utility
+Author: Config-Txt Project
+
+Usage Examples:
+    uv run qr.py "Hello World"
+    uv run qr.py "https://example.com" --output myqr.png --style rounded
+    uv run qr.py "Contact info" --size 15 --border 2
+"""
+
 import click
 from pathlib import Path
 import qrcode

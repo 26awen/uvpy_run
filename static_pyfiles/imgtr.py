@@ -6,6 +6,22 @@
 # ]
 # ///
 
+"""
+Image processing tool with various operations
+
+A comprehensive image processor supporting resize, rotate, crop, brightness,
+contrast, blur, sharpen, and grayscale operations with quality optimization.
+
+Version: 1.0.0
+Category: Media
+Author: Config-Txt Project
+
+Usage Examples:
+    uv run imgtr.py photo.jpg --resize 800,600
+    uv run imgtr.py photo.jpg --grayscale --blur 2.0
+    uv run imgtr.py photo.jpg --brightness 1.2 --contrast 1.1
+"""
+
 import click
 from PIL import Image, ImageFilter, ImageEnhance
 import os

@@ -4,8 +4,19 @@
 # ///
 
 """
-Password Generator for Daily Account Registration
-A simple script to generate secure passwords with customizable options.
+Generate secure passwords with customizable options
+
+A password generator for daily account registration with configurable length,
+character sets, and security options. Excludes ambiguous characters by default.
+
+Version: 1.0.0
+Category: Security
+Author: Config-Txt Project
+
+Usage Examples:
+    uv run passwordgen.py
+    uv run passwordgen.py -l 16 -c 3
+    uv run passwordgen.py --no-symbols --length 12
 """
 
 import random
