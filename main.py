@@ -42,7 +42,7 @@ def server_pyfiles(filename: str):
 def server_textbasedfiles(filename: str):
     return send_from_directory(STATIC_TEXTBASEDFILES_ROOT, filename)
 
-@app.route("/list")
+@app.route("/")
 def list_tools():
     """List all available Python tools in the static_pyfiles directory."""
     try:
