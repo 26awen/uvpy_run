@@ -42,6 +42,11 @@ def server_pyfiles(filename: str):
 def server_textbasedfiles(filename: str):
     return send_from_directory(STATIC_TEXTBASEDFILES_ROOT, filename)
 
+@app.route("/static/<filename>")
+def serve_static_files(filename: str):
+    """Serve static files like icons, CSS, JS, etc."""
+    return send_from_directory("./static/", filename)
+
 @app.route("/")
 def list_tools():
     """List all available Python tools in the static_pyfiles directory."""
