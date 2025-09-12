@@ -1,5 +1,5 @@
 import os
-from flask import Flask
+from flask import Flask, request
 from flask import send_from_directory
 from flask import render_template_string, render_template
 
@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 _ = load_dotenv()
 
 FLASK_SECRET = os.environ.get("FLASK_SECRET")
+FORCE_HTTPS = os.environ.get("FORCE_HTTPS", "false").lower() == "true"
 
 
 STATIC_PYFILES_ROOT = "./static_pyfiles/"
@@ -17,6 +18,32 @@ DEBUG_PORT = 9999
 
 app = Flask(__name__)
 app.secret_key = FLASK_SECRET
+
+
+def get_base_url():
+    """
+    动态获取基础URL，根据环境自动选择HTTP或HTTPS
+    在调试环境使用HTTP，生产环境或未知域名时使用HTTPS
+    """
+    # 如果强制使用HTTPS
+    if FORCE_HTTPS:
+        protocol = 'https'
+    # 检查是否在调试模式且是本地地址
+    elif app.debug and request.host.startswith(('localhost', '127.0.0.1', '0.0.0.0')):
+        protocol = 'http'
+    else:
+        # 检查请求头中的协议信息（代理服务器设置）
+        if request.headers.get('X-Forwarded-Proto') == 'https':
+            protocol = 'https'
+        elif request.headers.get('X-Forwarded-Ssl') == 'on':
+            protocol = 'https'
+        elif request.is_secure:
+            protocol = 'https'
+        else:
+            # 默认使用HTTPS，特别是对于未知域名
+            protocol = 'https'
+    
+    return f"{protocol}://{request.host}"
 
 
 html_file_not_found = f"""
@@ -73,8 +100,11 @@ def list_tools():
         # Sort files alphabetically
         py_files.sort(key=lambda x: x['filename'])
         
-        # Use external HTML template
-        return render_template('list_tools.html', tools=py_files)
+        # Get the base URL with correct protocol
+        base_url = get_base_url()
+        
+        # Use external HTML template with base_url context
+        return render_template('list_tools.html', tools=py_files, base_url=base_url)
         
     except Exception as e:
         error_html = f"""
@@ -208,4 +238,6 @@ def extract_file_info(file_path):
 
 
 if __name__ == "__main__":
+    # 添加配置以支持代理后的HTTPS检测
+    app.config['PREFERRED_URL_SCHEME'] = 'https'
     app.run(debug=True, host=DEBUG_HOST, port=DEBUG_PORT)
