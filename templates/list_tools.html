@@ -36,7 +36,7 @@
         "name": "uvpy.run",
         "alternateName": "UV Python Run",
         "description": "Collection of standalone Python tools executable remotely using UV with PEP 723 support",
-        "url": "{{ request.url_root }}",
+        "url": "{{ base_url }}/",
         "author": {
             "@type": "Organization",
             "name": "uvpy.run"
@@ -354,7 +354,7 @@
                         
                         <div class="tool-links">
                             <a href="{{ tool.url }}" target="_blank">[DOWNLOAD]</a>
-                            <button type="button" onclick="copyToClipboard('uv run {{ request.url_root }}{{ tool.filename[1:] if tool.filename.startswith('/') else tool.filename }}')">[COPY COMMAND]</button>
+                            <button type="button" onclick="copyToClipboard('uv run {{ base_url }}/{{ tool.filename[1:] if tool.filename.startswith('/') else tool.filename }}')">[COPY COMMAND]</button>
                         </div>
                     </div>
                 </div>
@@ -374,8 +374,8 @@
                 </div>
                 <div class="usage-body">
                     <p>You can run any of these Python scripts remotely using uv:</p>
-                    <p><code>uv run {{ request.url_root }}script_name.py</code></p>
-                    <p>For example: <code>uv run {{ request.url_root }}demo.py</code></p>
+                    <p><code>uv run {{ base_url }}/script_name.py</code></p>
+                    <p>For example: <code>uv run {{ base_url }}/demo.py</code></p>
                     <p>Each tool includes built-in help - try adding <code>--help</code> to see available options.</p>
                 </div>
             </div>
