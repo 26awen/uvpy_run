@@ -121,6 +121,7 @@ class SnakeGame(App):
         border: solid green;
         margin: 1;
         padding: 1;
+        text-align: center;
     }
     """
     
@@ -222,7 +223,8 @@ class SnakeGame(App):
         Update the visual display of the game board
         
         Creates a 2D grid representation and renders the snake, food,
-        score, and game status messages.
+        score, and game status messages. Uses horizontal spacing to match
+        vertical line spacing for better visual consistency.
         """
         # Create empty game board
         board = [[' ' for _ in range(self.width)] for _ in range(self.height)]
@@ -242,13 +244,19 @@ class SnakeGame(App):
         # Build display string with borders and UI
         lines = []
         lines.append(f"Score: {self.score}")
-        lines.append("+" + "-" * self.width + "+")  # Top border
         
-        # Add game board rows with side borders
+        # Add horizontal spacing to match vertical line spacing for better visual consistency
+        # Calculate border width for spaced characters (each cell takes 2 characters: content + space)
+        border_width = self.width * 2
+        lines.append("┌" + "─" * border_width + "┐")  # Top border with box drawing chars
+        
+        # Add game board rows with side borders, with spacing between characters
         for row in board:
-            lines.append("|" + "".join(row) + "|")
+            # Add space after each character for better visual consistency
+            row_str = " ".join(row) + " "  # Space between chars + trailing space
+            lines.append("│" + row_str + "│")
         
-        lines.append("+" + "-" * self.width + "+")  # Bottom border
+        lines.append("└" + "─" * border_width + "┘")  # Bottom border
         
         # Add status message based on game state
         if self.game_over:
