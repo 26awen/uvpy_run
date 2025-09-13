@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://uvpy.run/sitemap.xml
+
+# Allow crawling of static files
+Allow: /static/
+
+# Disallow sensitive files
+Disallow: /.env
+Disallow: /.git
+Disallow: /pyproject.toml
+Disallow: /uv.lock

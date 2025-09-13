@@ -20,6 +20,35 @@ app = Flask(__name__)
 app.secret_key = FLASK_SECRET
 
 
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to all responses"""
+    # Content Security Policy
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "font-src 'self'; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    )
+    
+    # Other security headers
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    
+    # HSTS for HTTPS (only add if using HTTPS)
+    if request.is_secure or request.headers.get('X-Forwarded-Proto') == 'https':
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    
+    return response
+
+
 def get_base_url():
     """
     动态获取基础URL，根据环境自动选择HTTP或HTTPS
@@ -73,6 +102,18 @@ def server_textbasedfiles(filename: str):
 def serve_static_files(filename: str):
     """Serve static files like icons, CSS, JS, etc."""
     return send_from_directory("./static/", filename)
+
+
+@app.route("/robots.txt")
+def robots_txt():
+    """Serve robots.txt file"""
+    return send_from_directory(".", "robots.txt")
+
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    """Serve sitemap.xml file"""
+    return send_from_directory(".", "sitemap.xml")
 
 @app.route("/")
 def list_tools():
