@@ -38,7 +38,7 @@ Generate QR codes with customizable styles and options
 A command-line utility for creating QR codes from text input.
 Supports square and rounded styles with adjustable size settings.
 
-Version: 1.0.0
+Version: 0.8.0
 Category: Utility
 Author: Config-Txt Project
 

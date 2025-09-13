@@ -38,7 +38,7 @@ Image processing tool with various operations
 A comprehensive image processor supporting resize, rotate, crop, brightness,
 contrast, blur, sharpen, and grayscale operations with quality optimization.
 
-Version: 1.0.0
+Version: 0.9.0
 Category: Media
 Author: Config-Txt Project
 

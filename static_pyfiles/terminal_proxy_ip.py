@@ -41,7 +41,7 @@ queries with flexible output formats.
 
 
 
-Version: 1.0.0
+Version: 0.6.0
 Category: Network Utility
 Author: Config-Txt Project
 

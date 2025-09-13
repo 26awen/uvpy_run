@@ -31,7 +31,7 @@ Generate secure secret keys for Flask applications
 A cryptographically secure secret key generator for Flask web applications.
 Produces hexadecimal keys suitable for session management and security.
 
-Version: 1.0.0
+Version: 0.3.0
 Category: Security
 Author: Config-Txt Project
 

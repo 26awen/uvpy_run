@@ -38,7 +38,7 @@ A modern implementation of the classic Breakout game using Tkinter.
 Features special bricks with power-ups, multiple difficulty levels,
 and smooth ball physics with paddle collision detection.
 
-Version: 1.0.0
+Version: 0.9.0
 Category: Game
 Author: Config-Txt Project
 

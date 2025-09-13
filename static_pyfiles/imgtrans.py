@@ -36,7 +36,7 @@ Image conversion and compression utility
 A batch image converter supporting multiple formats (JPEG, PNG, WebP, BMP, TIFF)
 with resize, compression, and EXIF orientation correction capabilities.
 
-Version: 1.0.0
+Version: 0.8.0
 Category: Media
 Author: Config-Txt Project
 

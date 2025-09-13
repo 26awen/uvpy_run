@@ -31,7 +31,7 @@ Generate secure passwords with customizable options
 A password generator for daily account registration with configurable length,
 character sets, and security options. Excludes ambiguous characters by default.
 
-Version: 1.0.0
+Version: 0.7.0
 Category: Security
 Author: Config-Txt Project
 

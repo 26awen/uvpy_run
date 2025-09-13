@@ -18,63 +18,63 @@
     
     <url>
         <loc>https://uvpy.run/cld.py</loc>
-        <lastmod>2025-01-13</lastmod>
+        <lastmod>2025-09-13</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     
     <url>
         <loc>https://uvpy.run/demo.py</loc>
-        <lastmod>2025-01-13</lastmod>
+        <lastmod>2025-09-13</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     
     <url>
         <loc>https://uvpy.run/flask_secret.py</loc>
-        <lastmod>2025-01-13</lastmod>
+        <lastmod>2025-09-13</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     
     <url>
         <loc>https://uvpy.run/imgtr.py</loc>
-        <lastmod>2025-01-13</lastmod>
+        <lastmod>2025-09-13</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     
     <url>
         <loc>https://uvpy.run/imgtrans.py</loc>
-        <lastmod>2025-01-13</lastmod>
+        <lastmod>2025-09-13</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     
     <url>
         <loc>https://uvpy.run/passwordgen.py</loc>
-        <lastmod>2025-01-13</lastmod>
+        <lastmod>2025-09-13</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     
     <url>
         <loc>https://uvpy.run/qr.py</loc>
-        <lastmod>2025-01-13</lastmod>
+        <lastmod>2025-09-13</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     
     <url>
         <loc>https://uvpy.run/snake.py</loc>
-        <lastmod>2025-01-13</lastmod>
+        <lastmod>2025-09-13</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     
     <url>
-        <loc>https://uvpy.run/tip.py</loc>
-        <lastmod>2025-01-13</lastmod>
+        <loc>https://uvpy.run/terminal_proxy_ip.py</loc>
+        <lastmod>2025-09-13</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>

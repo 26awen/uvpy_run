@@ -36,7 +36,7 @@ Beautiful calendar printer with highlighting features
 A command-line calendar tool that displays formatted monthly or yearly calendars
 with current day highlighting and customizable week start options.
 
-Version: 1.0.0
+Version: 0.8.0
 Category: Utility
 Author: Config-Txt Project
 

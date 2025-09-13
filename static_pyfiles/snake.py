@@ -39,7 +39,7 @@ A modern implementation of the classic Snake game using the Textual framework.
 Features customizable board size, adjustable speed, smooth terminal-based gameplay,
 and two-player mode. The snake grows by eating food while avoiding walls and its own body.
 
-Version: 1.0.0
+Version: 0.9.0
 Category: Game
 Author: Config-Txt Project
 
