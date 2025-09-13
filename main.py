@@ -94,9 +94,9 @@ def server_pyfiles(filename: str):
         return render_template_string(html_file_not_found)
 
 
-@app.route("/text/<filename>")
-def server_textbasedfiles(filename: str):
-    return send_from_directory(STATIC_TEXTBASEDFILES_ROOT, filename)
+# @app.route("/text/<filename>")
+# def server_textbasedfiles(filename: str):
+#     return send_from_directory(STATIC_TEXTBASEDFILES_ROOT, filename)
 
 @app.route("/static/<filename>")
 def serve_static_files(filename: str):

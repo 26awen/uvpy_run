@@ -1,9 +1,0 @@
-[tool.pyright]
-reportOptionalMemberAccess = false
-reportArgumentType = false
-reportUnknownParameterType = false
-reportUnknownMemberType = false
-reportUnknownVariableType = false
-reportUnknownArgumentType = false
-reportAny = false
-reportUnusedCallResult = false
