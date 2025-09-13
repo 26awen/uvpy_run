@@ -306,11 +306,11 @@
                     ■ ABOUT UVPY.RUN
                 </div>
                 <div class="description-body">
-                    <p><strong>uvpy.run</strong> hosts a curated collection of <strong>standalone Python tools</strong> designed to be executed remotely using <strong><a href="https://github.com/astral-sh/uv" target="_blank">UV</a></strong> (Ultra-fast Python package installer and resolver).</p>
+                    <p><strong>uvpy.run</strong> hosts a curated collection of <strong>standalone Python tools</strong> designed to be executed directly from URLs using <strong><a href="https://github.com/astral-sh/uv" target="_blank">UV</a></strong> (Ultra-fast Python package installer and resolver).</p>
                     <p>Thanks to <strong><a href="https://peps.python.org/pep-0723/" target="_blank">PEP 723</a></strong> (Inline script metadata), each script contains its own dependency specifications, making them completely self-contained and executable without manual environment setup.</p>
                     <p><strong>Why UV + PEP 723?</strong></p>
                     <ul>
-                        <li>🚀 <strong>Remote execution</strong>: Run Python scripts directly from URLs</li>
+                        <li>🚀 <strong>URL-based execution</strong>: Run Python scripts directly from URLs (downloaded and executed locally)</li>
                         <li>📦 <strong>Automatic dependencies</strong>: PEP 723 metadata handles package installation</li>
                         <li>⚡ <strong>Ultra-fast</strong>: UV's Rust-based implementation for speed</li>
                         <li>🔒 <strong>Isolated environments</strong>: Each script runs in its own environment</li>
@@ -373,7 +373,7 @@
                     ■ HOW TO USE THESE TOOLS
                 </div>
                 <div class="usage-body">
-                    <p>You can run any of these Python scripts remotely using uv:</p>
+                    <p>You can run any of these Python scripts directly from URLs using uv:</p>
                     <p><code>uv run {{ base_url }}/script_name.py</code></p>
                     <p>For example: <code>uv run {{ base_url }}/demo.py</code></p>
                     <p>Each tool includes built-in help - try adding <code>--help</code> to see available options.</p>
