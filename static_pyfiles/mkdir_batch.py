@@ -1,6 +1,49 @@
 # /// script
-# dependencies = ["click"]
+# requires-python = ">=3.12"
+# dependencies = ["click>=8.0.0"]
 # ///
+
+# MIT License
+#
+# Copyright (c) 2025 Config-Txt Project
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# Third-party Dependencies:
+# - Click: BSD-3-Clause License (https://github.com/pallets/click)
+
+"""
+Create multiple numbered directories in batch
+
+A command-line utility for efficiently creating multiple folders with numbered suffixes.
+Supports customizable base names, starting indices, and destination directories.
+
+Version: 1.0.0
+Category: File Management
+Author: Config-Txt Project
+
+Usage Examples:
+    uv run mkdir_batch.py ./test_dirs
+    uv run mkdir_batch.py ./projects --base-name project --count 5
+    uv run mkdir_batch.py ./data --base-name dataset --count 10 --start 1
+    uv run mkdir_batch.py ./folders --base-name folder --count 3 --verbose
+"""
 
 import os
 from pathlib import Path

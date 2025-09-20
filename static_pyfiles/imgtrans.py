@@ -55,7 +55,7 @@ from pathlib import Path
 from PIL import Image
 
 
-def get_file_size_mb(file_path: str):
+def get_file_size_mb(file_path: str | Path):
     """Get file size in MB"""
     return os.path.getsize(file_path) / (1024 * 1024)
 
