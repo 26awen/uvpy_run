@@ -5,7 +5,7 @@
 
 # MIT License
 #
-# Copyright (c) 2025 Config-Txt Project
+# Copyright (c) 2025 UVPY.RUN
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@ Supports customizable base names, starting indices, and destination directories.
 
 Version: 1.0.0
 Category: File Management
-Author: Config-Txt Project
+Author: UVPY.RUN
 
 Usage Examples:
     uv run mkdir_batch.py ./test_dirs

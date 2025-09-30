@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2025 Config-Txt Project
+# Copyright (c) 2025 UVPY.RUN
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@ functionality with uv run. Used for testing the config-txt system.
 
 Version: 0.1.0
 Category: Demo
-Author: Config-Txt Project
+Author: UVPY.RUN
 
 Usage Examples:
     uv run demo.py

@@ -8,7 +8,7 @@
 
 # MIT License
 #
-# Copyright (c) 2025 Config-Txt Project
+# Copyright (c) 2025 UVPY.RUN
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,7 @@ and two-player mode. The snake grows by eating food while avoiding walls and its
 
 Version: 0.9.0
 Category: Game
-Author: Config-Txt Project
+Author: UVPY.RUN
 
 Usage Examples:
     uv run snake.py

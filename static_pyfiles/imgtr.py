@@ -8,7 +8,7 @@
 
 # MIT License
 #
-# Copyright (c) 2025 Config-Txt Project
+# Copyright (c) 2025 UVPY.RUN
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,7 @@ contrast, blur, sharpen, and grayscale operations with quality optimization.
 
 Version: 0.9.0
 Category: Media
-Author: Config-Txt Project
+Author: UVPY.RUN
 
 Usage Examples:
     uv run imgtr.py photo.jpg --resize 800,600

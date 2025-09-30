@@ -5,7 +5,7 @@
 
 # MIT License
 #
-# Copyright (c) 2025 Config-Txt Project
+# Copyright (c) 2025 UVPY.RUN
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,7 @@ character sets, and security options. Excludes ambiguous characters by default.
 
 Version: 0.7.0
 Category: Security
-Author: Config-Txt Project
+Author: UVPY.RUN
 
 Usage Examples:
     uv run passwordgen.py
