@@ -85,8 +85,8 @@ def process_image(
     Image processing tool with various operations.
 
     Examples:
-    uv run image_processor.py photo.jpg --resize 800,600 --output resized.jpg
-    uv run image_processor.py photo.jpg --grayscale --blur 2.0
+    uv run imgtr.py photo.jpg --resize 800,600 --output resized.jpg
+    uv run imgtr.py photo.jpg --grayscale --blur 2.0
     """
 
     try:

@@ -201,27 +201,27 @@ def calendar_printer(
 
     \b
     # Print current month
-    python script.py
+    uv run cld.py
 
     \b
     # Print specific month with today highlighted
-    python script.py -m 6 -h
+    uv run cld.py -m 6 -h
 
     \b
     # Print multiple months
-    python script.py -m 1,3,6
+    uv run cld.py -m 1,3,6
 
     \b
     # Print month range with Sunday as first day
-    python script.py -m 1-6 -s
+    uv run cld.py -m 1-6 -s
 
     \b
     # Print entire year with today highlighted
-    python script.py -a -h
+    uv run cld.py -a -h
 
     \b
     # Print for different year
-    python script.py -y 2025 -m 1-3 -h
+    uv run cld.py -y 2025 -m 1-3 -h
     """
 
     # Set calendar first day of week

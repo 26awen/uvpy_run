@@ -223,6 +223,7 @@ def extract_detailed_file_info(file_path):
         
         # Extract PEP 723 dependencies
         in_script_block = False
+        in_dependencies = False
         for line in lines:
             stripped = line.strip()
             if stripped == '# /// script':
@@ -230,16 +231,28 @@ def extract_detailed_file_info(file_path):
                 continue
             elif stripped == '# ///':
                 in_script_block = False
-                continue
+                in_dependencies = False
+                break
             elif in_script_block:
                 if stripped.startswith('# dependencies = ['):
-                    # Extract dependencies from the list
-                    deps_line = stripped.replace('# dependencies = [', '').replace(']', '')
-                    if deps_line.strip():
-                        # Parse the dependencies
+                    in_dependencies = True
+                    # Check if it's a single line or multi-line
+                    if stripped.endswith(']'):
+                        # Single line dependencies
+                        deps_content = stripped[len('# dependencies = ['):-1]
                         import re
-                        deps = re.findall(r'"([^"]*)"', deps_line)
+                        deps = re.findall(r'"([^"]*)"', deps_content)
                         info['dependencies'] = deps
+                        in_dependencies = False
+                elif in_dependencies:
+                    if stripped.startswith('#     "') and ('",' in stripped or '"]' in stripped):
+                        # Multi-line dependency
+                        import re
+                        dep_match = re.search(r'"([^"]*)"', stripped)
+                        if dep_match:
+                            info['dependencies'].append(dep_match.group(1))
+                    elif stripped.endswith(']'):
+                        in_dependencies = False
         
         # Extract docstring information
         in_docstring = False
@@ -298,15 +311,14 @@ def extract_detailed_file_info(file_path):
                 elif line.startswith('Usage Examples:') or line.startswith('Examples:'):
                     collecting_examples = True
                     continue
-                elif collecting_examples and line.strip().startswith('uv run '):
-                    info['usage_examples'].append(line.strip())
-        
-        # Also look for usage examples in comments
-        for line in lines:
-            stripped = line.strip()
-            if stripped.startswith('#') and ('uv run ' in stripped or 'python ' in stripped):
-                example = stripped[1:].strip()
-                if example not in info['usage_examples']:
+                elif collecting_examples and (line.strip().startswith('uv run ') or line.strip().startswith('python ')):
+                    # Normalize script names - replace any script name with actual filename
+                    example = line.strip()
+                    import re
+                    # Replace any .py filename with the actual filename
+                    actual_filename = info['filename']
+                    example = re.sub(r'uv run [a-zA-Z_][a-zA-Z0-9_]*\.py', f'uv run {actual_filename}', example)
+                    example = re.sub(r'python [a-zA-Z_][a-zA-Z0-9_]*\.py', f'uv run {actual_filename}', example)
                     info['usage_examples'].append(example)
         
         # Set defaults if not found
