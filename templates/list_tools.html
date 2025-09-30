@@ -353,6 +353,7 @@
                         </div>
                         
                         <div class="tool-links">
+                            <a href="{{ tool.detail_url }}">[DETAILS]</a>
                             <a href="{{ tool.url }}" target="_blank">[DOWNLOAD]</a>
                             <button type="button" onclick="copyToClipboard('uv run {{ base_url }}/{{ tool.filename[1:] if tool.filename.startswith('/') else tool.filename }}')">[COPY COMMAND]</button>
                         </div>

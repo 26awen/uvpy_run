@@ -115,6 +115,45 @@ def sitemap_xml():
     """Serve sitemap.xml file"""
     return send_from_directory(".", "sitemap.xml")
 
+@app.route("/detail/<script_name>")
+def script_detail(script_name):
+    """Show detailed information about a specific script."""
+    try:
+        # Ensure script_name ends with .py
+        if not script_name.endswith('.py'):
+            script_name += '.py'
+        
+        file_path = os.path.join(STATIC_PYFILES_ROOT, script_name)
+        
+        # Check if file exists
+        if not os.path.exists(file_path):
+            return render_template_string(html_file_not_found), 404
+        
+        # Extract detailed information from the file
+        file_info = extract_detailed_file_info(file_path)
+        
+        # Get the base URL with correct protocol
+        base_url = get_base_url()
+        
+        # Use detail template
+        return render_template('script_detail.html',
+                             script_info=file_info,
+                             base_url=base_url,
+                             script_name=script_name)
+        
+    except Exception as e:
+        error_html = f"""
+        <html>
+        <head><title>Error</title></head>
+        <body>
+            <h1>Error loading script details</h1>
+            <p>An error occurred while loading script details: {str(e)}</p>
+        </body>
+        </html>
+        """
+        return render_template_string(error_html), 500
+
+
 @app.route("/")
 def list_tools():
     """List all available Python tools in the static_pyfiles directory."""
@@ -135,7 +174,8 @@ def list_tools():
                         'version': file_info['version'],
                         'category': file_info['category'],
                         'author': file_info['author'],
-                        'url': f'/{filename}'
+                        'url': f'/{filename}',
+                        'detail_url': f'/detail/{filename.replace(".py", "")}'
                     })
         
         # Sort files alphabetically
@@ -158,6 +198,138 @@ def list_tools():
         </html>
         """
         return render_template_string(error_html), 500
+
+
+def extract_detailed_file_info(file_path):
+    """Extract detailed information from Python file including usage examples, dependencies, and full content."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        info = {
+            'filename': os.path.basename(file_path),
+            'title': 'N/A',
+            'description': 'N/A',
+            'version': 'N/A',
+            'category': 'N/A',
+            'author': 'N/A',
+            'dependencies': [],
+            'usage_examples': [],
+            'full_docstring': '',
+            'source_lines': len(content.split('\n'))
+        }
+        
+        lines = content.split('\n')
+        
+        # Extract PEP 723 dependencies
+        in_script_block = False
+        for line in lines:
+            stripped = line.strip()
+            if stripped == '# /// script':
+                in_script_block = True
+                continue
+            elif stripped == '# ///':
+                in_script_block = False
+                continue
+            elif in_script_block:
+                if stripped.startswith('# dependencies = ['):
+                    # Extract dependencies from the list
+                    deps_line = stripped.replace('# dependencies = [', '').replace(']', '')
+                    if deps_line.strip():
+                        # Parse the dependencies
+                        import re
+                        deps = re.findall(r'"([^"]*)"', deps_line)
+                        info['dependencies'] = deps
+        
+        # Extract docstring information
+        in_docstring = False
+        docstring_lines = []
+        
+        for line in lines:
+            stripped = line.strip()
+            
+            if '"""' in stripped and not in_docstring:
+                in_docstring = True
+                if stripped.count('"""') == 2:
+                    # Single line docstring
+                    docstring_content = stripped.split('"""')[1].strip()
+                    if docstring_content:
+                        info['title'] = docstring_content
+                        info['description'] = docstring_content[:100] + ('...' if len(docstring_content) > 100 else '')
+                        info['full_docstring'] = docstring_content
+                    in_docstring = False
+                else:
+                    # Multi-line docstring start
+                    after_quotes = stripped.split('"""', 1)[1].strip()
+                    if after_quotes:
+                        docstring_lines.append(after_quotes)
+                continue
+            
+            if in_docstring:
+                if '"""' in stripped:
+                    # End of docstring
+                    before_quotes = stripped.split('"""')[0].strip()
+                    if before_quotes:
+                        docstring_lines.append(before_quotes)
+                    break
+                else:
+                    if stripped:
+                        docstring_lines.append(stripped)
+        
+        if docstring_lines:
+            full_docstring = '\n'.join(docstring_lines)
+            info['full_docstring'] = full_docstring
+            
+            # Extract first line as title
+            if docstring_lines:
+                info['title'] = docstring_lines[0].strip()
+                info['description'] = info['title'][:100] + ('...' if len(info['title']) > 100 else '')
+            
+            # Extract metadata fields and usage examples
+            collecting_examples = False
+            for line in docstring_lines:
+                line = line.strip()
+                if line.startswith('Version:'):
+                    info['version'] = line.split('Version:', 1)[1].strip()
+                elif line.startswith('Category:'):
+                    info['category'] = line.split('Category:', 1)[1].strip()
+                elif line.startswith('Author:'):
+                    info['author'] = line.split('Author:', 1)[1].strip()
+                elif line.startswith('Usage Examples:') or line.startswith('Examples:'):
+                    collecting_examples = True
+                    continue
+                elif collecting_examples and line.strip().startswith('uv run '):
+                    info['usage_examples'].append(line.strip())
+        
+        # Also look for usage examples in comments
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith('#') and ('uv run ' in stripped or 'python ' in stripped):
+                example = stripped[1:].strip()
+                if example not in info['usage_examples']:
+                    info['usage_examples'].append(example)
+        
+        # Set defaults if not found
+        if info['title'] == 'N/A':
+            info['title'] = f"Python Script: {info['filename']}"
+        if info['description'] == 'N/A':
+            info['description'] = f"Python utility script: {info['filename']}"
+        
+        return info
+        
+    except Exception as e:
+        return {
+            'filename': os.path.basename(file_path),
+            'title': f"Python Script: {os.path.basename(file_path)}",
+            'description': f"Python utility script: {os.path.basename(file_path)}",
+            'version': 'N/A',
+            'category': 'N/A',
+            'author': 'N/A',
+            'dependencies': [],
+            'usage_examples': [],
+            'full_docstring': f'Error reading file: {str(e)}',
+            'source_lines': 0
+        }
 
 
 def extract_file_info(file_path):

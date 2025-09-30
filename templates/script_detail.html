@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ script_info.title }} - uvpy.run</title>
+    <meta name="description" content="{{ script_info.description }}">
+    <meta name="keywords" content="uvpy.run, uv python, PEP 723, {{ script_info.filename }}, {{ script_info.category }}, python script">
+    <meta name="author" content="uvpy.run">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:title" content="{{ script_info.title }} - uvpy.run">
+    <meta property="og:description" content="{{ script_info.description }}">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary">
+    <meta property="twitter:url" content="{{ request.url }}">
+    <meta property="twitter:title" content="{{ script_info.title }} - uvpy.run">
+    <meta property="twitter:description" content="{{ script_info.description }}">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="{{ request.url }}">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="icon" type="image/x-icon" href="/static/favicon.svg">
+    
+    <style>
+        body {
+            font-family: "MS PGothic", "Hiragino Kaku Gothic Pro", "Meiryo", monospace;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            line-height: 1.4;
+            font-size: 12px;
+        }
+        
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border: 2px solid #000000;
+            padding: 0;
+        }
+        
+        header {
+            background-color: #000080;
+            color: #ffffff;
+            padding: 10px;
+            text-align: center;
+            border-bottom: 2px solid #000000;
+        }
+        
+        header h1 {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0 0 5px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        header p {
+            font-size: 11px;
+            margin: 0;
+        }
+        
+        header code {
+            background-color: #ffff00;
+            color: #000000;
+            padding: 1px 3px;
+            font-family: "Courier New", monospace;
+            font-size: 10px;
+        }
+        
+        .content {
+            padding: 15px;
+        }
+        
+        .back-link {
+            display: inline-block;
+            padding: 3px 8px;
+            margin-bottom: 15px;
+            font-size: 10px;
+            text-decoration: none;
+            border: 1px solid #808080;
+            background-color: #e0e0e0;
+            color: #000000;
+        }
+        
+        .back-link:hover {
+            background-color: #d0d0d0;
+        }
+        
+        .script-title {
+            background-color: #000080;
+            color: #ffffff;
+            padding: 8px 15px;
+            margin: 0 -15px 15px -15px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .script-meta {
+            border: 1px solid #808080;
+            background-color: #f8f8f8;
+            margin-bottom: 15px;
+        }
+        
+        .meta-header {
+            background-color: #c0c0c0;
+            padding: 5px 10px;
+            border-bottom: 1px dotted #808080;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .meta-body {
+            padding: 10px;
+        }
+        
+        .meta-row {
+            margin-bottom: 5px;
+            font-size: 11px;
+        }
+        
+        .meta-label {
+            font-weight: bold;
+            display: inline-block;
+            width: 80px;
+        }
+        
+        .meta-value {
+            color: #000080;
+        }
+        
+        .section {
+            border: 1px solid #808080;
+            background-color: #f8f8f8;
+            margin-bottom: 15px;
+        }
+        
+        .section-header {
+            background-color: #c0c0c0;
+            padding: 5px 10px;
+            border-bottom: 1px dotted #808080;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .section-body {
+            padding: 10px;
+            font-size: 11px;
+        }
+        
+        .command-box {
+            background-color: #000000;
+            color: #00ff00;
+            padding: 10px;
+            border: 1px solid #808080;
+            font-family: "Courier New", monospace;
+            font-size: 11px;
+            margin: 10px 0;
+            position: relative;
+        }
+        
+        .copy-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            padding: 2px 6px;
+            font-size: 9px;
+            background-color: #808080;
+            color: #ffffff;
+            border: 1px solid #ffffff;
+            cursor: pointer;
+        }
+        
+        .copy-button:hover {
+            background-color: #a0a0a0;
+        }
+        
+        .dependencies {
+            margin: 5px 0;
+        }
+        
+        .dependency {
+            display: inline-block;
+            background-color: #ffff00;
+            color: #000000;
+            padding: 2px 6px;
+            margin: 2px;
+            font-size: 10px;
+            border: 1px solid #808080;
+        }
+        
+        .examples-list {
+            margin: 5px 0;
+        }
+        
+        .example {
+            background-color: #000000;
+            color: #00ff00;
+            padding: 5px;
+            margin: 5px 0;
+            font-family: "Courier New", monospace;
+            font-size: 10px;
+            border: 1px solid #808080;
+            position: relative;
+        }
+        
+        .description-text {
+            white-space: pre-wrap;
+            font-size: 11px;
+            line-height: 1.5;
+        }
+        
+        .download-section {
+            text-align: center;
+            padding: 15px;
+            background-color: #e0e0e0;
+            border: 1px dotted #808080;
+            margin: 15px 0;
+        }
+        
+        .download-button {
+            display: inline-block;
+            padding: 8px 15px;
+            margin: 5px;
+            font-size: 12px;
+            text-decoration: none;
+            border: 2px solid #000080;
+            background-color: #000080;
+            color: #ffffff;
+            font-weight: bold;
+        }
+        
+        .download-button:hover {
+            background-color: #000060;
+            border-color: #000060;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border: 1px dotted #808080;
+            margin: 10px 0;
+            font-size: 10px;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 14px;
+            font-weight: bold;
+            color: #000080;
+        }
+        
+        .decoration {
+            text-align: center;
+            font-size: 10px;
+            color: #808080;
+            margin: 10px 0;
+        }
+        
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+                font-size: 11px;
+            }
+            
+            main {
+                border: 1px solid #000000;
+            }
+            
+            .content {
+                padding: 10px;
+            }
+            
+            .meta-label {
+                width: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <header>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 5px;">
+                <img src="/static/favicon.svg" alt="uvpy.run logo" style="width: 32px; height: 32px;">
+                <h1>★ uvpy.run ★</h1>
+                <img src="/static/favicon.svg" alt="uvpy.run logo" style="width: 32px; height: 32px;">
+            </div>
+            <p>Script Details - Execute with <code>uv run</code></p>
+        </header>
+        
+        <div class="content">
+            <a href="/" class="back-link">← Back to Tool List</a>
+            
+            <div class="script-title">
+                ▼ {{ script_info.filename }}
+            </div>
+            
+            <!-- Script Metadata -->
+            <div class="script-meta">
+                <div class="meta-header">■ SCRIPT INFORMATION</div>
+                <div class="meta-body">
+                    <div class="meta-row">
+                        <span class="meta-label">File:</span>
+                        <span class="meta-value">{{ script_info.filename }}</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Version:</span>
+                        <span class="meta-value">{{ script_info.version }}</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Category:</span>
+                        <span class="meta-value">{{ script_info.category }}</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Author:</span>
+                        <span class="meta-value">{{ script_info.author }}</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Lines:</span>
+                        <span class="meta-value">{{ script_info.source_lines }} lines</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Execute -->
+            <div class="download-section">
+                <div style="margin-bottom: 10px; font-weight: bold; font-size: 12px;">QUICK EXECUTE</div>
+                <div class="command-box">
+                    uv run {{ base_url }}/{{ script_info.filename }}
+                    <button class="copy-button" onclick="copyToClipboard('uv run {{ base_url }}/{{ script_info.filename }}')">COPY</button>
+                </div>
+                <a href="/{{ script_info.filename }}" target="_blank" class="download-button">[DOWNLOAD SCRIPT]</a>
+            </div>
+            
+            <!-- Dependencies Section -->
+            {% if script_info.dependencies %}
+            <div class="section">
+                <div class="section-header">■ DEPENDENCIES (PEP 723)</div>
+                <div class="section-body">
+                    <div class="dependencies">
+                        {% for dep in script_info.dependencies %}
+                        <span class="dependency">{{ dep }}</span>
+                        {% endfor %}
+                    </div>
+                    <p style="margin-top: 10px; font-size: 10px; color: #666;">
+                        Dependencies are automatically managed by UV using PEP 723 inline script metadata.
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Description Section -->
+            {% if script_info.full_docstring and script_info.full_docstring != 'N/A' %}
+            <div class="section">
+                <div class="section-header">■ DESCRIPTION</div>
+                <div class="section-body">
+                    <div class="description-text">{{ script_info.full_docstring }}</div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Usage Examples Section -->
+            {% if script_info.usage_examples %}
+            <div class="section">
+                <div class="section-header">■ USAGE EXAMPLES</div>
+                <div class="section-body">
+                    <div class="examples-list">
+                        {% for example in script_info.usage_examples %}
+                        <div class="example">
+                            {{ example }}
+                            <button class="copy-button" onclick="copyToClipboard('{{ example }}')">COPY</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Statistics -->
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-number">{{ script_info.source_lines }}</div>
+                    <div>Lines of Code</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">{{ script_info.dependencies|length }}</div>
+                    <div>Dependencies</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">{{ script_info.usage_examples|length }}</div>
+                    <div>Examples</div>
+                </div>
+            </div>
+            
+            <div class="decoration">◆◇◆◇◆ END OF DETAILS ◆◇◆◇◆</div>
+            
+            <!-- Footer -->
+            <div style="text-align: center; padding: 15px; font-size: 10px; color: #808080; border-top: 1px dotted #808080;">
+                <p><strong>uvpy.run</strong> - Remote Python Script Execution Platform</p>
+                <p>Powered by <a href="https://github.com/astral-sh/uv" target="_blank">UV</a> + <a href="https://peps.python.org/pep-0723/" target="_blank">PEP 723</a></p>
+            </div>
+        </div>
+    </main>
+    
+    <script>
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function() {
+                console.log('Command copied to clipboard:', text);
+            }, function(err) {
+                console.error('Could not copy text: ', err);
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                console.log('Fallback copy method used');
+            });
+        }
+    </script>
+</body>
+</html>
