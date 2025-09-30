@@ -3,7 +3,7 @@
     <!-- Main page -->
     <url>
         <loc>https://uvpy.run/</loc>
-        <lastmod>2025-01-13</lastmod>
+        <lastmod>2025-09-30</lastmod>
         <changefreq>weekly</changefreq>
         <priority>1.0</priority>
     </url>
@@ -11,71 +11,184 @@
     <!-- Python tools -->
     <url>
         <loc>https://uvpy.run/brick.py</loc>
-        <lastmod>2025-01-13</lastmod>
+        <lastmod>2025-09-30</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     
     <url>
         <loc>https://uvpy.run/cld.py</loc>
-        <lastmod>2025-09-13</lastmod>
+        <lastmod>2025-09-30</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     
     <url>
         <loc>https://uvpy.run/demo.py</loc>
-        <lastmod>2025-09-13</lastmod>
+        <lastmod>2025-09-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    
+    <url>
+        <loc>https://uvpy.run/disk_usage.py</loc>
+        <lastmod>2025-09-30</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     
     <url>
         <loc>https://uvpy.run/flask_secret.py</loc>
-        <lastmod>2025-09-13</lastmod>
+        <lastmod>2025-09-30</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     
     <url>
         <loc>https://uvpy.run/imgtr.py</loc>
-        <lastmod>2025-09-13</lastmod>
+        <lastmod>2025-09-30</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     
     <url>
         <loc>https://uvpy.run/imgtrans.py</loc>
-        <lastmod>2025-09-13</lastmod>
+        <lastmod>2025-09-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    
+    <url>
+        <loc>https://uvpy.run/mkdir_batch.py</loc>
+        <lastmod>2025-09-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    
+    <url>
+        <loc>https://uvpy.run/nospace.py</loc>
+        <lastmod>2025-09-30</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     
     <url>
         <loc>https://uvpy.run/passwordgen.py</loc>
-        <lastmod>2025-09-13</lastmod>
+        <lastmod>2025-09-30</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     
     <url>
         <loc>https://uvpy.run/qr.py</loc>
-        <lastmod>2025-09-13</lastmod>
+        <lastmod>2025-09-30</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     
     <url>
         <loc>https://uvpy.run/snake.py</loc>
-        <lastmod>2025-09-13</lastmod>
+        <lastmod>2025-09-30</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
     </url>
     
     <url>
         <loc>https://uvpy.run/terminal_proxy_ip.py</loc>
-        <lastmod>2025-09-13</lastmod>
+        <lastmod>2025-09-30</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
+    </url>
+    
+    <!-- Script detail pages -->
+    <url>
+        <loc>https://uvpy.run/detail/brick</loc>
+        <lastmod>2025-09-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    
+    <url>
+        <loc>https://uvpy.run/detail/cld</loc>
+        <lastmod>2025-09-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    
+    <url>
+        <loc>https://uvpy.run/detail/demo</loc>
+        <lastmod>2025-09-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    
+    <url>
+        <loc>https://uvpy.run/detail/disk_usage</loc>
+        <lastmod>2025-09-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    
+    <url>
+        <loc>https://uvpy.run/detail/flask_secret</loc>
+        <lastmod>2025-09-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    
+    <url>
+        <loc>https://uvpy.run/detail/imgtr</loc>
+        <lastmod>2025-09-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    
+    <url>
+        <loc>https://uvpy.run/detail/imgtrans</loc>
+        <lastmod>2025-09-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    
+    <url>
+        <loc>https://uvpy.run/detail/mkdir_batch</loc>
+        <lastmod>2025-09-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    
+    <url>
+        <loc>https://uvpy.run/detail/nospace</loc>
+        <lastmod>2025-09-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    
+    <url>
+        <loc>https://uvpy.run/detail/passwordgen</loc>
+        <lastmod>2025-09-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    
+    <url>
+        <loc>https://uvpy.run/detail/qr</loc>
+        <lastmod>2025-01-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    
+    <url>
+        <loc>https://uvpy.run/detail/snake</loc>
+        <lastmod>2025-01-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    
+    <url>
+        <loc>https://uvpy.run/detail/terminal_proxy_ip</loc>
+        <lastmod>2025-01-30</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
     </url>
 </urlset>
