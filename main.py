@@ -86,24 +86,6 @@ html_file_not_found = f"""
 """
 
 
-@app.route("/<filename>")
-def server_pyfiles(filename: str):
-    try:
-        return send_from_directory(STATIC_PYFILES_ROOT, filename)
-    except FileNotFoundError:
-        return render_template_string(html_file_not_found)
-
-
-# @app.route("/text/<filename>")
-# def server_textbasedfiles(filename: str):
-#     return send_from_directory(STATIC_TEXTBASEDFILES_ROOT, filename)
-
-@app.route("/static/<filename>")
-def serve_static_files(filename: str):
-    """Serve static files like icons, CSS, JS, etc."""
-    return send_from_directory("./static/", filename)
-
-
 @app.route("/robots.txt")
 def robots_txt():
     """Serve robots.txt file"""
@@ -114,6 +96,13 @@ def robots_txt():
 def sitemap_xml():
     """Serve sitemap.xml file"""
     return send_from_directory(".", "sitemap.xml")
+
+
+@app.route("/static/<filename>")
+def serve_static_files(filename: str):
+    """Serve static files like icons, CSS, JS, etc."""
+    return send_from_directory("./static/", filename)
+
 
 @app.route("/detail/<script_name>")
 def script_detail(script_name):
@@ -152,6 +141,14 @@ def script_detail(script_name):
         </html>
         """
         return render_template_string(error_html), 500
+
+
+@app.route("/<filename>")
+def server_pyfiles(filename: str):
+    try:
+        return send_from_directory(STATIC_PYFILES_ROOT, filename)
+    except FileNotFoundError:
+        return render_template_string(html_file_not_found)
 
 
 @app.route("/")
