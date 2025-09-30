@@ -174,23 +174,48 @@
             top: 50%;
             right: 10px;
             transform: translateY(-50%);
-            padding: 4px 10px;
-            font-size: 10px;
-            background-color: #007aff;
-            color: #ffffff;
-            border: none;
+            padding: 3px 8px;
+            font-size: 9px;
+            background-color: #c0c0c0;
+            color: #000000;
+            border: 1px solid #808080;
             cursor: pointer;
-            font-weight: 500;
-            border-radius: 4px;
-            transition: all 0.2s ease;
+            font-weight: bold;
         }
         
         .copy-button:hover {
-            background-color: #0051d5;
+            background-color: #d0d0d0;
         }
         
         .copy-button:active {
-            transform: translateY(-50%) scale(0.95);
+            background-color: #a0a0a0;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        
+        .action-button {
+            display: inline-block;
+            padding: 8px 20px;
+            font-size: 11px;
+            text-decoration: none;
+            border: 1px solid #808080;
+            background-color: #c0c0c0;
+            color: #000000;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .action-button:hover {
+            background-color: #d0d0d0;
+        }
+        
+        .action-button:active {
+            background-color: #a0a0a0;
         }
         
         .dependencies {
@@ -363,7 +388,10 @@
                     uv run {{ base_url }}/{{ script_info.filename }}
                     <button class="copy-button" onclick="copyToClipboard('uv run {{ base_url }}/{{ script_info.filename }}')">COPY</button>
                 </div>
-                <a href="/{{ script_info.filename }}" target="_blank" class="download-button">[DOWNLOAD SCRIPT]</a>
+                <div class="action-buttons">
+                    <button class="action-button" onclick="copyToClipboard('uv run {{ base_url }}/{{ script_info.filename }}')">[COPY COMMAND]</button>
+                    <a href="/{{ script_info.filename }}" target="_blank" class="action-button">[DOWNLOAD SCRIPT]</a>
+                </div>
             </div>
             
             <!-- Dependencies Section -->
