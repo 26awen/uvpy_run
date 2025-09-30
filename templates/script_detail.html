@@ -384,9 +384,8 @@
             <!-- Quick Execute -->
             <div class="download-section">
                 <div style="margin-bottom: 10px; font-weight: bold; font-size: 12px;">QUICK EXECUTE</div>
-                <div class="command-box">
+                <div class="command-box" style="padding: 15px;">
                     uv run {{ base_url }}/{{ script_info.filename }}
-                    <button class="copy-button" onclick="copyToClipboard('uv run {{ base_url }}/{{ script_info.filename }}')">COPY</button>
                 </div>
                 <div class="action-buttons">
                     <button class="action-button" onclick="copyToClipboard('uv run {{ base_url }}/{{ script_info.filename }}')">[COPY COMMAND]</button>
