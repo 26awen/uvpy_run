@@ -157,37 +157,40 @@
         }
         
         .command-box {
-            background-color: #c0c0c0;
-            color: #000000;
-            padding: 10px;
-            border: 2px inset #808080;
-            font-family: "Courier New", monospace;
-            font-size: 11px;
-            margin: 10px 0;
+            background-color: #f5f5f5;
+            color: #1a1a1a;
+            padding: 15px 40px 15px 15px;
+            border: 1px solid #d0d0d0;
+            font-family: "SF Mono", "Monaco", "Menlo", "Courier New", monospace;
+            font-size: 12px;
+            margin: 15px 0;
             position: relative;
-            box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #808080;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         
         .copy-button {
             position: absolute;
-            top: 5px;
-            right: 5px;
-            padding: 3px 8px;
-            font-size: 9px;
-            background-color: #c0c0c0;
-            color: #000000;
-            border: 2px outset #ffffff;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            padding: 4px 10px;
+            font-size: 10px;
+            background-color: #007aff;
+            color: #ffffff;
+            border: none;
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 500;
+            border-radius: 4px;
+            transition: all 0.2s ease;
         }
         
         .copy-button:hover {
-            background-color: #d0d0d0;
+            background-color: #0051d5;
         }
         
         .copy-button:active {
-            border-style: inset;
-            background-color: #a0a0a0;
+            transform: translateY(-50%) scale(0.95);
         }
         
         .dependencies {
@@ -209,48 +212,31 @@
         }
         
         .example {
-            background-color: #c0c0c0;
-            color: #000000;
-            padding: 8px;
-            margin: 8px 0;
-            font-family: "Courier New", monospace;
-            font-size: 11px;
-            border: 2px inset #808080;
-            position: relative;
-            box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #808080;
-        }
-        
-        .description-text {
-            white-space: pre-wrap;
-            font-size: 11px;
-            line-height: 1.7;
-            color: #222;
-            padding: 5px 0;
-        }
-        
-        .description-text p {
+            background-color: #f5f5f5;
+            color: #1a1a1a;
+            padding: 12px 40px 12px 15px;
             margin: 10px 0;
+            font-family: "SF Mono", "Monaco", "Menlo", "Courier New", monospace;
+            font-size: 12px;
+            border: 1px solid #d0d0d0;
+            position: relative;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         
         .description-section-content {
             background-color: #ffffff;
-            padding: 12px;
-            border: 1px solid #d0d0d0;
-            line-height: 1.8;
+            padding: 25px;
+            border: none;
         }
         
-        .description-paragraph {
-            margin: 12px 0;
-            text-indent: 0;
-            color: #222;
-        }
-        
-        .description-paragraph:first-child {
-            margin-top: 0;
-        }
-        
-        .description-paragraph:last-child {
-            margin-bottom: 0;
+        .description-text {
+            white-space: pre-wrap;
+            font-size: 13px;
+            line-height: 2.0;
+            color: #1d1d1f;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+            letter-spacing: 0.01em;
         }
         
         .download-section {
@@ -401,14 +387,9 @@
             {% if script_info.full_docstring and script_info.full_docstring != 'N/A' %}
             <div class="section">
                 <div class="section-header">■ DESCRIPTION</div>
-                <div class="section-body">
+                <div class="section-body" style="padding: 0;">
                     <div class="description-section-content">
-                        {% set paragraphs = script_info.full_docstring.split('\n\n') %}
-                        {% for paragraph in paragraphs %}
-                            {% if paragraph.strip() %}
-                                <div class="description-paragraph">{{ paragraph.strip() }}</div>
-                            {% endif %}
-                        {% endfor %}
+                        <div class="description-text">{{ script_info.full_docstring }}</div>
                     </div>
                 </div>
             </div>
