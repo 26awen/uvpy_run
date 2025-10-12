@@ -53,6 +53,7 @@ Usage Examples:
 
 import click
 import requests
+from requests import exceptions
 import time
 from typing import Any
 from rich.live import Live
@@ -320,7 +321,7 @@ def monitor(ip_address: str, port: int, interval: int, token: str | None) -> Non
                     live.update(layout)
                     time.sleep(interval)
 
-                except requests.exceptions.ConnectionError:
+                except exceptions.ConnectionError:
                     error_panel = Panel(
                         f"[bold red]Cannot connect to aria2 RPC at {rpc_url}[/bold red]\n"
                         "[yellow]Please check if aria2 is running and RPC is enabled[/yellow]",
@@ -330,7 +331,7 @@ def monitor(ip_address: str, port: int, interval: int, token: str | None) -> Non
                     live.update(error_panel)
                     time.sleep(interval)
 
-                except requests.exceptions.RequestException as e:
+                except exceptions.RequestException as e:
                     error_panel = Panel(
                         f"[bold red]Error: {str(e)}[/bold red]",
                         title="Request Error",
