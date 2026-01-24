@@ -1,416 +1,578 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>uvpy.run - Remote Python Scripts with UV and PEP 723</title>
-    <meta name="description" content="uvpy.run - Collection of standalone Python tools that can be executed remotely using UV. Leveraging PEP 723 inline script metadata for dependency management and remote execution.">
-    <meta name="keywords" content="uvpy.run, uv python, PEP 723, remote python scripts, python tools, standalone python, inline dependencies, python package manager, uv run, python automation">
-    <meta name="author" content="uvpy.run">
-    <meta name="robots" content="index, follow">
-    
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="{{ request.url }}">
-    <meta property="og:title" content="uvpy.run - Remote Python Scripts Collection">
-    <meta property="og:description" content="Execute Python scripts remotely with UV at uvpy.run. PEP 723 compliant tools with inline dependency management.">
-    
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary">
-    <meta property="twitter:url" content="{{ request.url }}">
-    <meta property="twitter:title" content="uvpy.run - Remote Python Scripts">
-    <meta property="twitter:description" content="Collection of standalone Python tools executable via UV with PEP 723 support at uvpy.run.">
-    
-    <!-- Canonical URL -->
-    <link rel="canonical" href="{{ request.url }}">
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-    <link rel="icon" type="image/x-icon" href="/static/favicon.svg">
-    
-    <!-- JSON-LD Structured Data for SEO -->
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "uvpy.run",
-        "alternateName": "UV Python Run",
-        "description": "Collection of standalone Python tools executable remotely using UV with PEP 723 support",
-        "url": "{{ base_url }}/",
-        "author": {
-            "@type": "Organization",
-            "name": "uvpy.run"
-        },
-        "programmingLanguage": "Python",
-        "applicationCategory": "DeveloperApplication",
-        "operatingSystem": "Cross-platform",
-        "keywords": ["uvpy.run", "uv", "python", "PEP 723", "remote execution", "standalone scripts", "python tools", "automation", "package manager"]
-    }
-    </script>
-    
-    <style>
-        body {
-            font-family: "MS PGothic", "Hiragino Kaku Gothic Pro", "Meiryo", monospace;
-            background-color: #f0f0f0;
-            margin: 0;
-            padding: 20px;
-            color: #333;
-            line-height: 1.4;
-            font-size: 12px;
-        }
-        
-        main {
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            border: 2px solid #000000;
-            padding: 0;
-        }
-        
-        header {
-            background-color: #000080;
-            color: #ffffff;
-            padding: 10px;
-            text-align: center;
-            border-bottom: 2px solid #000000;
-        }
-        
-        header h1 {
-            font-size: 18px;
-            font-weight: bold;
-            margin: 0 0 5px 0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        header p {
-            font-size: 11px;
-            margin: 0;
-        }
-        
-        header code {
-            background-color: #ffff00;
-            color: #000000;
-            padding: 1px 3px;
-            font-family: "Courier New", monospace;
-            font-size: 10px;
-        }
-        
-        .content {
-            padding: 15px;
-        }
-        
-        .tools-grid {
-            margin-bottom: 20px;
-        }
-        
-        .tool-card {
-            border: 1px solid #808080;
-            margin-bottom: 10px;
-            background-color: #f8f8f8;
-        }
-        
-        .tool-header {
-            background-color: #c0c0c0;
-            padding: 5px 10px;
-            border-bottom: 1px solid #808080;
-            font-weight: bold;
-            font-size: 13px;
-        }
-        
-        .tool-body {
-            padding: 10px;
-        }
-        
-        .tool-description {
-            margin-bottom: 10px;
-            font-size: 11px;
-            color: #444;
-        }
-        
-        .tool-meta {
-            margin-bottom: 10px;
-            font-size: 10px;
-        }
-        
-        .meta-row {
-            margin-bottom: 3px;
-        }
-        
-        .meta-label {
-            font-weight: bold;
-            display: inline-block;
-            width: 60px;
-        }
-        
-        .meta-value {
-            color: #000080;
-        }
-        
-        .tool-links {
-            border-top: 1px dotted #808080;
-            padding-top: 8px;
-        }
-        
-        .tool-links a,
-        .tool-links button {
-            display: inline-block;
-            padding: 3px 8px;
-            margin-right: 5px;
-            margin-bottom: 3px;
-            font-size: 10px;
-            text-decoration: none;
-            border: 1px solid #808080;
-            background-color: #e0e0e0;
-            color: #000000;
-            font-family: inherit;
-            cursor: pointer;
-        }
-        
-        .tool-links a:hover,
-        .tool-links button:hover {
-            background-color: #d0d0d0;
-        }
-        
-        .tool-links a {
-            background-color: #000080;
-            color: #ffffff;
-        }
-        
-        .tool-links a:hover {
-            background-color: #000060;
-        }
-        
-        .description-section,
-        .usage-section {
-            border: 1px solid #808080;
-            background-color: #f8f8f8;
-            margin-top: 20px;
-        }
-        
-        .description-header,
-        .usage-header {
-            background-color: #c0c0c0;
-            padding: 5px 10px;
-            border-bottom: 1px dotted #808080;
-            font-weight: bold;
-            font-size: 12px;
-        }
-        
-        .description-body,
-        .usage-body {
-            padding: 10px;
-            font-size: 11px;
-        }
-        
-        .description-body p,
-        .usage-body p {
-            margin: 5px 0;
-        }
-        
-        .description-body ul {
-            margin: 8px 0;
-            padding-left: 20px;
-        }
-        
-        .description-body li {
-            margin: 3px 0;
-            font-size: 10px;
-        }
-        
-        .description-body strong,
-        .usage-body strong {
-            font-weight: bold;
-            color: #000080;
-        }
-        
-        .description-body a,
-        .usage-body a {
-            color: #000080;
-            text-decoration: underline;
-            font-weight: bold;
-        }
-        
-        .description-body a:hover,
-        .usage-body a:hover {
-            color: #000060;
-            background-color: #f0f0f0;
-        }
-        
-        .description-body code,
-        .usage-body code {
-            background-color: #ffff00;
-            color: #000000;
-            padding: 1px 3px;
-            font-family: "Courier New", monospace;
-            font-size: 10px;
-        }
-        
-        .no-tools {
-            text-align: center;
-            padding: 30px;
-            border: 1px solid #808080;
-            background-color: #f8f8f8;
-            font-size: 12px;
-        }
-        
-        hr {
-            border: none;
-            border-top: 1px dotted #808080;
-            margin: 15px 0;
-        }
-        
-        /* 添加一些复古的装饰元素 */
-        .decoration {
-            text-align: center;
-            font-size: 10px;
-            color: #808080;
-            margin: 10px 0;
-        }
-        
-        @media (max-width: 600px) {
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>uvpy.run - Remote Python Scripts with UV and PEP 723</title>
+        <meta
+            name="description"
+            content="uvpy.run - Collection of standalone Python tools that can be executed remotely using UV. Leveraging PEP 723 inline script metadata for dependency management and remote execution."
+        />
+        <meta
+            name="keywords"
+            content="uvpy.run, uv python, PEP 723, remote python scripts, python tools, standalone python, inline dependencies, python package manager, uv run, python automation"
+        />
+        <meta name="author" content="uvpy.run" />
+        <meta name="robots" content="index, follow" />
+
+        <!-- Open Graph / Facebook -->
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="{{ request.url }}" />
+        <meta
+            property="og:title"
+            content="uvpy.run - Remote Python Scripts Collection"
+        />
+        <meta
+            property="og:description"
+            content="Execute Python scripts remotely with UV at uvpy.run. PEP 723 compliant tools with inline dependency management."
+        />
+
+        <!-- Twitter -->
+        <meta property="twitter:card" content="summary" />
+        <meta property="twitter:url" content="{{ request.url }}" />
+        <meta
+            property="twitter:title"
+            content="uvpy.run - Remote Python Scripts"
+        />
+        <meta
+            property="twitter:description"
+            content="Collection of standalone Python tools executable via UV with PEP 723 support at uvpy.run."
+        />
+
+        <!-- Canonical URL -->
+        <link rel="canonical" href="{{ request.url }}" />
+
+        <!-- Favicon -->
+        <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+        <link rel="icon" type="image/x-icon" href="/static/favicon.svg" />
+
+        <!-- JSON-LD Structured Data for SEO -->
+        <script type="application/ld+json">
+            {
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                "name": "uvpy.run",
+                "alternateName": "UV Python Run",
+                "description": "Collection of standalone Python tools executable remotely using UV with PEP 723 support",
+                "url": "{{ base_url }}/",
+                "author": {
+                    "@type": "Organization",
+                    "name": "uvpy.run"
+                },
+                "programmingLanguage": "Python",
+                "applicationCategory": "DeveloperApplication",
+                "operatingSystem": "Cross-platform",
+                "keywords": [
+                    "uvpy.run",
+                    "uv",
+                    "python",
+                    "PEP 723",
+                    "remote execution",
+                    "standalone scripts",
+                    "python tools",
+                    "automation",
+                    "package manager"
+                ]
+            }
+        </script>
+
+        <style>
             body {
-                padding: 10px;
-                font-size: 11px;
+                font-family:
+                    "MS PGothic", "Hiragino Kaku Gothic Pro", "Meiryo",
+                    monospace;
+                background-color: #f0f0f0;
+                margin: 0;
+                padding: 20px;
+                color: #333;
+                line-height: 1.6;
+                font-size: 14px;
             }
-            
+
             main {
-                border: 1px solid #000000;
+                max-width: 900px;
+                margin: 0 auto;
+                background-color: #ffffff;
+                border: 2px solid #000000;
+                padding: 0;
             }
-            
+
+            header {
+                background-color: #000080;
+                color: #ffffff;
+                padding: 15px;
+                text-align: center;
+                border-bottom: 2px solid #000000;
+            }
+
+            header h1 {
+                font-size: 24px;
+                font-weight: bold;
+                margin: 0 0 8px 0;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+
+            header p {
+                font-size: 13px;
+                margin: 0;
+            }
+
+            header code {
+                background-color: #ffff00;
+                color: #000000;
+                padding: 2px 4px;
+                font-family: "Courier New", monospace;
+                font-size: 12px;
+            }
+
             .content {
-                padding: 10px;
+                padding: 20px;
             }
-            
+
+            .tools-grid {
+                margin-bottom: 20px;
+            }
+
+            .tool-card {
+                border: 1px solid #808080;
+                margin-bottom: 15px;
+                background-color: #f8f8f8;
+            }
+
+            .tool-header {
+                background-color: #c0c0c0;
+                padding: 8px 12px;
+                border-bottom: 1px solid #808080;
+                font-weight: bold;
+                font-size: 15px;
+            }
+
+            .tool-body {
+                padding: 12px;
+            }
+
+            .tool-description {
+                margin-bottom: 12px;
+                font-size: 13px;
+                color: #444;
+                line-height: 1.6;
+            }
+
+            .tool-meta {
+                margin-bottom: 12px;
+                font-size: 12px;
+            }
+
+            .meta-row {
+                margin-bottom: 5px;
+            }
+
             .meta-label {
-                width: 50px;
+                font-weight: bold;
+                display: inline-block;
+                width: 70px;
             }
-        }
-    </style>
-</head>
-<body>
-    <main>
-        <header>
-            <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 5px;">
-                <img src="/static/favicon.svg" alt="uvpy.run - Remote Python script execution platform logo" style="width: 32px; height: 32px;">
-                <h1 style="margin: 0;">★ uvpy.run ★</h1>
-                <img src="/static/favicon.svg" alt="uvpy.run - Remote Python script execution platform logo" style="width: 32px; height: 32px;">
-            </div>
-            <p>Remote Python Scripts Collection - Execute with <code>uv run</code></p>
-        </header>
-        
-        <div class="content">
-            <!-- Website Description Section -->
-            <div class="description-section">
-                <div class="description-header">
-                    ■ ABOUT UVPY.RUN
+
+            .meta-value {
+                color: #000080;
+            }
+
+            .tool-links {
+                border-top: 1px dotted #808080;
+                padding-top: 10px;
+            }
+
+            .tool-links a,
+            .tool-links button {
+                display: inline-block;
+                padding: 5px 12px;
+                margin-right: 8px;
+                margin-bottom: 5px;
+                font-size: 12px;
+                text-decoration: none;
+                border: 1px solid #808080;
+                background-color: #e0e0e0;
+                color: #000000;
+                font-family: inherit;
+                cursor: pointer;
+            }
+
+            .tool-links a:hover,
+            .tool-links button:hover {
+                background-color: #d0d0d0;
+            }
+
+            .tool-links a {
+                background-color: #000080;
+                color: #ffffff;
+            }
+
+            .tool-links a:hover {
+                background-color: #000060;
+            }
+
+            .description-section,
+            .usage-section {
+                border: 1px solid #808080;
+                background-color: #f8f8f8;
+                margin-top: 20px;
+            }
+
+            .description-header,
+            .usage-header {
+                background-color: #c0c0c0;
+                padding: 8px 12px;
+                border-bottom: 1px dotted #808080;
+                font-weight: bold;
+                font-size: 14px;
+            }
+
+            .description-body,
+            .usage-body {
+                padding: 12px;
+                font-size: 13px;
+            }
+
+            .description-body p,
+            .usage-body p {
+                margin: 8px 0;
+            }
+
+            .description-body ul {
+                margin: 10px 0;
+                padding-left: 25px;
+            }
+
+            .description-body li {
+                margin: 5px 0;
+                font-size: 12px;
+            }
+
+            .description-body strong,
+            .usage-body strong {
+                font-weight: bold;
+                color: #000080;
+            }
+
+            .description-body a,
+            .usage-body a {
+                color: #000080;
+                text-decoration: underline;
+                font-weight: bold;
+            }
+
+            .description-body a:hover,
+            .usage-body a:hover {
+                color: #000060;
+                background-color: #f0f0f0;
+            }
+
+            .description-body code,
+            .usage-body code {
+                background-color: #ffff00;
+                color: #000000;
+                padding: 2px 4px;
+                font-family: "Courier New", monospace;
+                font-size: 12px;
+            }
+
+            .no-tools {
+                text-align: center;
+                padding: 40px;
+                border: 1px solid #808080;
+                background-color: #f8f8f8;
+                font-size: 14px;
+            }
+
+            hr {
+                border: none;
+                border-top: 1px dotted #808080;
+                margin: 20px 0;
+            }
+
+            /* 添加一些复古的装饰元素 */
+            .decoration {
+                text-align: center;
+                font-size: 12px;
+                color: #808080;
+                margin: 15px 0;
+            }
+
+            @media (max-width: 600px) {
+                body {
+                    padding: 10px;
+                    font-size: 13px;
+                }
+
+                main {
+                    border: 1px solid #000000;
+                }
+
+                .content {
+                    padding: 15px;
+                }
+
+                .meta-label {
+                    width: 60px;
+                }
+
+                header h1 {
+                    font-size: 20px;
+                }
+
+                .tool-header {
+                    font-size: 14px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <header>
+                <div
+                    style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 15px;
+                        margin-bottom: 5px;
+                    "
+                >
+                    <img
+                        src="/static/favicon.svg"
+                        alt="uvpy.run - Remote Python script execution platform logo"
+                        style="width: 32px; height: 32px"
+                    />
+                    <h1 style="margin: 0">★ uvpy.run ★</h1>
+                    <img
+                        src="/static/favicon.svg"
+                        alt="uvpy.run - Remote Python script execution platform logo"
+                        style="width: 32px; height: 32px"
+                    />
                 </div>
-                <div class="description-body">
-                    <p><strong>uvpy.run</strong> hosts a curated collection of <strong>standalone Python tools</strong> designed to be executed directly from URLs using <strong><a href="https://github.com/astral-sh/uv" target="_blank">UV</a></strong> (Ultra-fast Python package installer and resolver).</p>
-                    <p>Thanks to <strong><a href="https://peps.python.org/pep-0723/" target="_blank">PEP 723</a></strong> (Inline script metadata), each script contains its own dependency specifications, making them completely self-contained and executable without manual environment setup.</p>
-                    <p><strong>Why UV + PEP 723?</strong></p>
-                    <ul>
-                        <li>🚀 <strong>URL-based execution</strong>: Run Python scripts directly from URLs (downloaded and executed locally)</li>
-                        <li>📦 <strong>Automatic dependencies</strong>: PEP 723 metadata handles package installation</li>
-                        <li>⚡ <strong>Ultra-fast</strong>: UV's Rust-based implementation for speed</li>
-                        <li>🔒 <strong>Isolated environments</strong>: Each script runs in its own environment</li>
-                        <li>🛠️ <strong>Zero setup</strong>: No virtual environment management needed</li>
-                    </ul>
-                    <p>Simply copy any command below and run it in your terminal - UV will handle everything else!</p>                    
-                    <div style="border: 1px solid #ff6b6b; background-color: #ffe6e6; padding: 8px; margin: 10px 0; font-size: 10px;">
-                        <strong>⚠️ SECURITY WARNING:</strong> Running remote scripts can pose security risks. Please review the source code of any script before execution. By using these tools, you acknowledge that you run them at your own risk and responsibility. The website maintainer is not liable for any damage or security issues that may arise from script execution.
+                <p>
+                    Remote Python Scripts Collection - Execute with
+                    <code>uv run</code>
+                </p>
+            </header>
+
+            <div class="content">
+                <!-- Website Description Section -->
+                <div class="description-section">
+                    <div class="description-header">■ ABOUT UVPY.RUN</div>
+                    <div class="description-body">
+                        <p>
+                            <strong>uvpy.run</strong> hosts a curated collection
+                            of <strong>standalone Python tools</strong> designed
+                            to be executed directly from URLs using
+                            <strong
+                                ><a
+                                    href="https://github.com/astral-sh/uv"
+                                    target="_blank"
+                                    >UV</a
+                                ></strong
+                            >
+                            (Ultra-fast Python package installer and resolver).
+                        </p>
+                        <p>
+                            Thanks to
+                            <strong
+                                ><a
+                                    href="https://peps.python.org/pep-0723/"
+                                    target="_blank"
+                                    >PEP 723</a
+                                ></strong
+                            >
+                            (Inline script metadata), each script contains its
+                            own dependency specifications, making them
+                            completely self-contained and executable without
+                            manual environment setup.
+                        </p>
+                        <p><strong>Why UV + PEP 723?</strong></p>
+                        <ul>
+                            <li>
+                                🚀 <strong>URL-based execution</strong>: Run
+                                Python scripts directly from URLs (downloaded
+                                and executed locally)
+                            </li>
+                            <li>
+                                📦 <strong>Automatic dependencies</strong>: PEP
+                                723 metadata handles package installation
+                            </li>
+                            <li>
+                                ⚡ <strong>Ultra-fast</strong>: UV's Rust-based
+                                implementation for speed
+                            </li>
+                            <li>
+                                🔒 <strong>Isolated environments</strong>: Each
+                                script runs in its own environment
+                            </li>
+                            <li>
+                                🛠️ <strong>Zero setup</strong>: No virtual
+                                environment management needed
+                            </li>
+                        </ul>
+                        <p>
+                            Simply copy any command below and run it in your
+                            terminal - UV will handle everything else!
+                        </p>
+                        <div
+                            style="
+                                border: 1px solid #ff6b6b;
+                                background-color: #ffe6e6;
+                                padding: 8px;
+                                margin: 10px 0;
+                                font-size: 10px;
+                            "
+                        >
+                            <strong>⚠️ SECURITY WARNING:</strong> Running remote
+                            scripts can pose security risks. Please review the
+                            source code of any script before execution. By using
+                            these tools, you acknowledge that you run them at
+                            your own risk and responsibility. The website
+                            maintainer is not liable for any damage or security
+                            issues that may arise from script execution.
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            <hr>
-            
-            <div class="decoration">◆◇◆◇◆ TOOL COLLECTION ◆◇◆◇◆</div>
-            
-            {% if tools %}
-            <div class="tools-grid">
-                {% for tool in tools %}
-                <div class="tool-card">
-                    <div class="tool-header">
-                        ▼ {{ tool.filename }}
-                    </div>
-                    <div class="tool-body">
-                        <div class="tool-description">{{ tool.description }}</div>
-                        
-                        <div class="tool-meta">
-                            <div class="meta-row">
-                                <span class="meta-label">Version:</span>
-                                <span class="meta-value">{{ tool.version }}</span>
+
+                <hr />
+
+                <div class="decoration">◆◇◆◇◆ TOOL COLLECTION ◆◇◆◇◆</div>
+
+                {% if tools %}
+                <div class="tools-grid">
+                    {% for tool in tools %}
+                    <div class="tool-card">
+                        <div class="tool-header">▼ {{ tool.filename }}</div>
+                        <div class="tool-body">
+                            <div class="tool-description">
+                                {{ tool.description }}
                             </div>
-                            <div class="meta-row">
-                                <span class="meta-label">Category:</span>
-                                <span class="meta-value">{{ tool.category }}</span>
+
+                            <div class="tool-meta">
+                                <div class="meta-row">
+                                    <span class="meta-label">Version:</span>
+                                    <span class="meta-value"
+                                        >{{ tool.version }}</span
+                                    >
+                                </div>
+                                <div class="meta-row">
+                                    <span class="meta-label">Category:</span>
+                                    <span class="meta-value"
+                                        >{{ tool.category }}</span
+                                    >
+                                </div>
+                                <div class="meta-row">
+                                    <span class="meta-label">Author:</span>
+                                    <span class="meta-value"
+                                        >{{ tool.author }}</span
+                                    >
+                                </div>
                             </div>
-                            <div class="meta-row">
-                                <span class="meta-label">Author:</span>
-                                <span class="meta-value">{{ tool.author }}</span>
+
+                            <div class="tool-links">
+                                <a href="{{ tool.detail_url }}">[DETAILS]</a>
+                                <a href="{{ tool.url }}" target="_blank"
+                                    >[DOWNLOAD]</a
+                                >
+                                <button
+                                    type="button"
+                                    onclick="copyToClipboard('uv run {{ base_url }}/{{ tool.filename[1:] if tool.filename.startswith('/') else tool.filename }}')"
+                                >
+                                    [COPY COMMAND]
+                                </button>
                             </div>
                         </div>
-                        
-                        <div class="tool-links">
-                            <a href="{{ tool.detail_url }}">[DETAILS]</a>
-                            <a href="{{ tool.url }}" target="_blank">[DOWNLOAD]</a>
-                            <button type="button" onclick="copyToClipboard('uv run {{ base_url }}/{{ tool.filename[1:] if tool.filename.startswith('/') else tool.filename }}')">[COPY COMMAND]</button>
-                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="no-tools">
+                    <p>
+                        ※ No Python tools found in the static_pyfiles directory
+                        ※
+                    </p>
+                </div>
+                {% endif %}
+
+                <hr />
+
+                <div class="usage-section">
+                    <div class="usage-header">■ HOW TO USE THESE TOOLS</div>
+                    <div class="usage-body">
+                        <p>
+                            You can run any of these Python scripts directly
+                            from URLs using uv:
+                        </p>
+                        <p>uv run {{ base_url }}/passwordgen.py</p>
+                        <p>
+                            Each tool includes built-in help - try adding --help
+                            to see available options.
+                        </p>
                     </div>
                 </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <div class="no-tools">
-                <p>※ No Python tools found in the static_pyfiles directory ※</p>
-            </div>
-            {% endif %}
-            
-            <hr>
-            
-            <div class="usage-section">
-                <div class="usage-header">
-                    ■ HOW TO USE THESE TOOLS
+
+                <div class="decoration">◆◇◆◇◆ END OF LIST ◆◇◆◇◆</div>
+
+                <hr />
+
+                <!-- Footer Brand Info -->
+                <div
+                    style="
+                        text-align: center;
+                        padding: 15px;
+                        font-size: 10px;
+                        color: #808080;
+                    "
+                >
+                    <p>
+                        <strong>uvpy.run</strong> - Remote Python Script
+                        Execution Platform
+                    </p>
+                    <p>
+                        Powered by
+                        <a
+                            href="https://github.com/astral-sh/uv"
+                            target="_blank"
+                            >UV</a
+                        >
+                        +
+                        <a
+                            href="https://peps.python.org/pep-0723/"
+                            target="_blank"
+                            >PEP 723</a
+                        >
+                    </p>
+                    <p>
+                        © 2025 uvpy.run - Execute Python scripts remotely with
+                        confidence
+                    </p>
                 </div>
-                <div class="usage-body">
-                    <p>You can run any of these Python scripts directly from URLs using uv:</p>
-                    <p><code>uv run {{ base_url }}/script_name.py</code></p>
-                    <p>For example: <code>uv run {{ base_url }}/demo.py</code></p>
-                    <p>Each tool includes built-in help - try adding <code>--help</code> to see available options.</p>
-                </div>
             </div>
-            
-            <div class="decoration">◆◇◆◇◆ END OF LIST ◆◇◆◇◆</div>
-            
-            <hr>
-            
-            <!-- Footer Brand Info -->
-            <div style="text-align: center; padding: 15px; font-size: 10px; color: #808080;">
-                <p><strong>uvpy.run</strong> - Remote Python Script Execution Platform</p>
-                <p>Powered by <a href="https://github.com/astral-sh/uv" target="_blank">UV</a> + <a href="https://peps.python.org/pep-0723/" target="_blank">PEP 723</a></p>
-                <p>© 2025 uvpy.run - Execute Python scripts remotely with confidence</p>
-            </div>
-        </div>
-    </main>
-    
-    <script>
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(function() {
-                // 成功复制，静默处理
-                console.log('Command copied to clipboard:', text);
-            }, function(err) {
-                console.error('Could not copy text: ', err);
-                // 复制失败时，选中文本让用户手动复制
-                const textArea = document.createElement('textarea');
-                textArea.value = text;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                console.log('Fallback copy method used');
-            });
-        }
-    </script>
-</body>
+        </main>
+
+        <script>
+            function copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(
+                    function () {
+                        // 成功复制，静默处理
+                        console.log("Command copied to clipboard:", text);
+                    },
+                    function (err) {
+                        console.error("Could not copy text: ", err);
+                        // 复制失败时，选中文本让用户手动复制
+                        const textArea = document.createElement("textarea");
+                        textArea.value = text;
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand("copy");
+                        document.body.removeChild(textArea);
+                        console.log("Fallback copy method used");
+                    },
+                );
+            }
+        </script>
+    </body>
 </html>
