@@ -1,9 +1,9 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = [
-#     "click",
-#     "requests",
-#     "rich",
+#     "click>=8.0.0",
+#     "requests>=2.31.0",
+#     "rich>=13.7.0",
 # ]
 # ///
 
@@ -35,20 +35,30 @@
 # - Rich: MIT License (https://github.com/Textualize/rich)
 
 """
-Real-time aria2 download monitor with elegant terminal interface
+Monitor aria2 downloads from the terminal
 
-A command-line utility for monitoring aria2 RPC server download status.
-Features a beautiful terminal interface with real-time updates, progress bars,
-download statistics, and connection information.
+A long-running terminal monitor for an aria2 JSON-RPC server. It connects to
+the target RPC endpoint, refreshes download status until interrupted, and shows
+active, waiting and stopped downloads with progress and speed details.
 
-Version: 1.0.0
-Category: Network/Download
+Version: 1.0.1
+Category: Network
 Author: UVPY.RUN
 
 Usage Examples:
-    uv run aria2rpc_watch.py 127.0.0.1
+    uv run aria2rpc_watch.py --help
     uv run aria2rpc_watch.py 192.168.1.100 --port 6800 --interval 1
-    uv run aria2rpc_watch.py localhost --token mytoken --interval 3
+    uv run aria2rpc_watch.py localhost --token "$ARIA2_RPC_TOKEN" --interval 3
+
+Use It For:
+    - Watching active aria2 downloads without opening a browser UI
+    - Checking waiting and stopped queues from a remote or local RPC server
+    - Keeping transfer speed, progress, and global stats visible in one terminal
+
+Connection Notes:
+    - Connects to an existing aria2 JSON-RPC endpoint over HTTP
+    - Runs continuously until you stop it with Ctrl+C
+    - Use --token when your aria2 RPC server has a secret configured
 """
 
 import click
@@ -268,9 +278,19 @@ def create_layout(
 
 @click.command()
 @click.argument("ip_address")
-@click.option("--port", "-p", default=6800, help="aria2 RPC port (default: 6800)")
 @click.option(
-    "--interval", "-i", default=2, help="Update interval in seconds (default: 2)"
+    "--port",
+    "-p",
+    type=click.IntRange(1, 65535),
+    default=6800,
+    help="aria2 RPC port (default: 6800)",
+)
+@click.option(
+    "--interval",
+    "-i",
+    type=click.IntRange(1),
+    default=2,
+    help="Update interval in seconds (default: 2)",
 )
 @click.option("--token", "-t", default=None, help="aria2 RPC secret token")
 def monitor(ip_address: str, port: int, interval: int, token: str | None) -> None:
@@ -346,4 +366,3 @@ def monitor(ip_address: str, port: int, interval: int, token: str | None) -> Non
 
 if __name__ == "__main__":
     monitor()
-

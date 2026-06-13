@@ -22,6 +22,14 @@ class RouteSmokeTests(unittest.TestCase):
         self.assertIn(b"Details", response.data)
         self.assertIn(b"Source", response.data)
         self.assertIn(b"https://github.com/26awen/uvpy_run", response.data)
+        self.assertIn(
+            b'document.querySelectorAll(".filter-button[data-category]")',
+            response.data,
+        )
+        self.assertNotIn(
+            b'document.querySelectorAll("[data-category]")',
+            response.data,
+        )
 
     def test_all_detail_pages_render(self):
         script_names = sorted(

@@ -1031,7 +1031,7 @@
             const resultCount = document.getElementById("resultCount");
             const emptyState = document.getElementById("emptyState");
             const filterButtons = Array.from(
-                document.querySelectorAll("[data-category]"),
+                document.querySelectorAll(".filter-button[data-category]"),
             );
             let activeCategory = "all";
 
@@ -1112,7 +1112,8 @@
             });
 
             document.querySelectorAll("[data-copy]").forEach(function (button) {
-                button.addEventListener("click", function () {
+                button.addEventListener("click", function (event) {
+                    event.stopPropagation();
                     copyText(button.dataset.copy, button);
                 });
             });

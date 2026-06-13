@@ -36,8 +36,8 @@ Remove all spaces from text strings with flexible input options
 A command-line utility for removing spaces from text input.
 Supports both direct text input and interactive mode for user convenience.
 
-Version: 0.0.2
-Category: Text Processing
+Version: 0.0.3
+Category: Text
 Author: UVPY.RUN
 
 Usage Examples:
@@ -45,6 +45,16 @@ Usage Examples:
     uv run nospace.py --interactive
     uv run nospace.py -t "This is a test"
     uv run nospace.py -i
+
+Use It For:
+    - Removing literal space characters from short snippets
+    - Cleaning copy-pasted labels, identifiers, or simple test strings
+    - Trying text input directly or through an interactive prompt
+
+Output:
+    - Prints the original text
+    - Prints the text after spaces have been removed
+    - Leaves tabs, newlines, and other whitespace untouched
 """
 
 import click

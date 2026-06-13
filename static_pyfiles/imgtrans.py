@@ -31,19 +31,30 @@
 # - Pillow: HPND License (https://github.com/python-pillow/Pillow)
 
 """
-Image conversion and compression utility
+Batch convert, resize and compress images
 
 A batch image converter supporting multiple formats (JPEG, PNG, WebP, BMP, TIFF)
-with resize, compression, and EXIF orientation correction capabilities.
+with resize, compression, and EXIF orientation correction. Use `imgtr.py` when
+you need single-image effects such as blur, sharpen, grayscale or brightness.
 
-Version: 0.8.0
-Category: Media
+Version: 0.8.1
+Category: Image
 Author: UVPY.RUN
 
 Usage Examples:
     uv run imgtrans.py --input photo.jpg --format webp
-    uv run imgtrans.py --input *.png --resize 800x600
+    uv run imgtrans.py --input "*.png" --resize 800x600
     uv run imgtrans.py --input photo.jpg --compress --quality 80
+
+Use It For:
+    - Converting one image or a wildcard batch to another format
+    - Resizing many images with the same target dimensions or scale
+    - Compressing JPEG/WebP output for smaller files
+
+Batch Notes:
+    - Quote wildcard inputs so your shell passes the pattern to the script
+    - Use --output-dir for batch output instead of overwriting source folders
+    - EXIF orientation is normalized before saving
 """
 
 import argparse
@@ -212,9 +223,9 @@ def main():
         epilog="""
 Examples:
   %(prog)s --input photo.jpg --format webp              # Convert to WebP
-  %(prog)s --input *.png --format jpeg --quality 80     # Batch convert PNG to JPEG
+  %(prog)s --input "*.png" --format jpeg --quality 80   # Batch convert PNG to JPEG
   %(prog)s --input large.jpg --resize 800x600           # Resize image
-  %(prog)s --input photo.jpg --resize 50                # Scale to 50%
+  %(prog)s --input photo.jpg --resize 50                # Scale to 50%%
   %(prog)s --input photo.jpg --compress --quality 70    # Compress image
   %(prog)s --input images/*.jpg --output-dir converted/ # Batch process to a directory
         """,
@@ -297,8 +308,9 @@ Examples:
             success_count += 1
 
     print(f"Done: {success_count}/{len(input_files)} files processed successfully")
+    if success_count < len(input_files):
+        sys.exit(1)
 
 
 if __name__ == "__main__":
     main()
-

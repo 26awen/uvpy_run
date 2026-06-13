@@ -35,20 +35,30 @@
 # - Rich: MIT License (https://github.com/Textualize/rich)
 
 """
-Monitor disk usage with beautiful visualization and color-coded alerts
+Inspect disk usage with color-coded terminal tables
 
 A command-line utility for monitoring disk space usage across all partitions
 or specific mount points. Features elegant table display with progress bars,
 color-coded usage levels, and detailed partition information.
 
-Version: 0.0.5
-Category: System Monitoring
+Version: 0.0.6
+Category: System
 Author: UVPY.RUN
 
 Usage Examples:
     uv run disk_usage.py
     uv run disk_usage.py -p /
     uv run disk_usage.py --partition /home
+
+Use It For:
+    - Checking available space across accessible mounted partitions
+    - Inspecting one mount point before a cleanup or backup job
+    - Getting a quick color-coded usage summary in the terminal
+
+Output:
+    - Shows size, used space, free space, and usage percentage
+    - Uses progress bars to make high-usage disks easy to spot
+    - Skips partitions the current user cannot read
 """
 
 import click

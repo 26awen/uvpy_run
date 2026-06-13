@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
-# dependencies = ["click>=8.0.0"]
+# dependencies = [
+#     "click>=8.0.0",
+# ]
 # ///
 
 # MIT License
@@ -29,32 +31,55 @@
 # - Click: BSD-3-Clause License (https://github.com/pallets/click)
 
 """
-Create multiple numbered directories in batch
+Create numbered directory batches with dry-run safety
 
 A command-line utility for efficiently creating multiple folders with numbered suffixes.
-Supports customizable base names, starting indices, and destination directories.
+Supports customizable base names, starting indices, dry-run previews and
+explicit handling for folders that already exist.
 
-Version: 1.0.0
-Category: File Management
+Version: 1.1.0
+Category: File
 Author: UVPY.RUN
 
 Usage Examples:
-    uv run mkdir_batch.py ./test_dirs
+    uv run mkdir_batch.py ./test_dirs --dry-run
     uv run mkdir_batch.py ./projects --base-name project --count 5
     uv run mkdir_batch.py ./data --base-name dataset --count 10 --start 1
-    uv run mkdir_batch.py ./folders --base-name folder --count 3 --verbose
+    uv run mkdir_batch.py ./folders --base-name folder --count 3 --fail-existing
+
+Use It For:
+    - Creating numbered project, dataset, or batch folders
+    - Previewing folder names before changing the filesystem
+    - Repeating a consistent naming pattern without manual mkdir commands
+
+Safety Notes:
+    - Use --dry-run first when creating many folders
+    - Existing folders are skipped by default
+    - Use --fail-existing when conflicts should abort the whole operation
 """
 
-import os
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import click
 
 
+@dataclass
+class FolderBatchResult:
+    targets: list[str]
+    created: list[str]
+    existing: list[str]
+    dry_run: bool
+
+
 def create_folders_batch(
-    dest_dir: str | Path, base_name: str, count: int, start_index: int = 0
-) -> list[str]:
+    dest_dir: str | Path,
+    base_name: str,
+    count: int,
+    start_index: int = 0,
+    dry_run: bool = False,
+    fail_existing: bool = False,
+) -> FolderBatchResult:
     """
     Create multiple folders with numbered suffixes.
 
@@ -63,22 +88,45 @@ def create_folders_batch(
         base_name: Base name for the folders
         count: Number of folders to create
         start_index: Starting index for numbering
+        dry_run: Preview the folders without creating them
+        fail_existing: Raise an error if any target folder already exists
 
     Returns:
-        List of created folder paths
+        FolderBatchResult describing targets, created folders and existing folders
     """
     dest_path = Path(dest_dir)
-    dest_path.mkdir(parents=True, exist_ok=True)
+    target_paths = [
+        dest_path / f"{base_name}_{i}" for i in range(start_index, start_index + count)
+    ]
+    existing = [str(path) for path in target_paths if path.exists()]
 
+    if fail_existing and existing:
+        existing_list = ", ".join(existing)
+        raise FileExistsError(f"Target folder already exists: {existing_list}")
+
+    if dry_run:
+        return FolderBatchResult(
+            targets=[str(path) for path in target_paths],
+            created=[],
+            existing=existing,
+            dry_run=True,
+        )
+
+    dest_path.mkdir(parents=True, exist_ok=True)
     created_folders = []
 
-    for i in range(start_index, start_index + count):
-        folder_name = f"{base_name}_{i}"
-        folder_path = dest_path / folder_name
-        folder_path.mkdir(exist_ok=True)
+    for folder_path in target_paths:
+        if folder_path.exists():
+            continue
+        folder_path.mkdir()
         created_folders.append(str(folder_path))
 
-    return created_folders
+    return FolderBatchResult(
+        targets=[str(path) for path in target_paths],
+        created=created_folders,
+        existing=existing,
+        dry_run=False,
+    )
 
 
 @click.command()
@@ -103,8 +151,22 @@ def create_folders_batch(
     type=int,
     help="Starting index for numbering (default: 0)",
 )
+@click.option("--dry-run", is_flag=True, help="Preview folders without creating them")
+@click.option(
+    "--fail-existing",
+    is_flag=True,
+    help="Abort if any target folder already exists",
+)
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed output")
-def main(dest_dir: str, base_name: str, count: int, start: int, verbose: bool) -> None:
+def main(
+    dest_dir: str,
+    base_name: str,
+    count: int,
+    start: int,
+    dry_run: bool,
+    fail_existing: bool,
+    verbose: bool,
+) -> None:
     """
     Create multiple numbered folders in the specified directory.
 
@@ -113,21 +175,42 @@ def main(dest_dir: str, base_name: str, count: int, start: int, verbose: bool) -
     if count <= 0:
         click.echo("Error: Count must be greater than 0", err=True)
         raise click.Abort()
+    if start < 0:
+        click.echo("Error: Start index must be 0 or greater", err=True)
+        raise click.Abort()
 
     try:
-        created_folders = create_folders_batch(
-            dest_dir=dest_dir, base_name=base_name, count=count, start_index=start
+        result = create_folders_batch(
+            dest_dir=dest_dir,
+            base_name=base_name,
+            count=count,
+            start_index=start,
+            dry_run=dry_run,
+            fail_existing=fail_existing,
         )
 
-        if verbose:
-            click.echo(f"Successfully created {len(created_folders)} folders:")
-            for folder in created_folders:
-                click.echo(f"  - {folder}")
+        if dry_run:
+            click.echo(f"Dry run: {len(result.targets)} folder(s) would be checked.")
+            if result.existing:
+                click.echo(f"{len(result.existing)} target folder(s) already exist.")
         else:
-            click.echo(
-                f"Successfully created {len(created_folders)} folders in {dest_dir}"
-            )
+            click.echo(f"Created {len(result.created)} new folder(s) in {dest_dir}.")
+            if result.existing:
+                click.echo(
+                    f"Skipped {len(result.existing)} existing folder(s). "
+                    "Use --fail-existing to abort on conflicts."
+                )
 
+        if verbose:
+            label = "Would create/check" if dry_run else "Target folders"
+            click.echo(f"{label}:")
+            for folder in result.targets:
+                marker = "exists" if folder in result.existing else "new"
+                click.echo(f"  - [{marker}] {folder}")
+
+    except FileExistsError as e:
+        click.echo(f"Error: {e}", err=True)
+        raise click.Abort()
     except PermissionError:
         click.echo(
             f"Error: Permission denied when creating folders in {dest_dir}", err=True

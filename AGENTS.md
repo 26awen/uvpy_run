@@ -125,7 +125,9 @@ Scripts should also include a module docstring with:
 - `Version:`,
 - `Category:`,
 - `Author:`,
-- `Usage Examples:`.
+- `Usage Examples:`,
+- at least one named section after the examples, such as `Use It For:`,
+  `Output:`, `Safety Notes:` or domain-specific sections like `Game Controls:`.
 
 Usage examples may use local-looking script names such as:
 
@@ -160,12 +162,14 @@ The homepage should evolve into a discovery page:
 Priority order:
 
 1. Stabilize current detail page changes.
-2. Add route and metadata parsing tests.
-3. Fix missing script 404 behavior.
-4. Remove duplicated static route behavior if safe.
-5. Improve homepage discovery with search and category filtering.
-6. Keep metadata parsing in `tool_metadata.py`.
-7. Generate sitemap from real script metadata.
+2. Audit and improve the existing tool catalog end to end, including script
+   names, tool functionality, descriptions, usage examples and metadata quality.
+3. Add route and metadata parsing tests.
+4. Fix missing script 404 behavior.
+5. Remove duplicated static route behavior if safe.
+6. Improve homepage discovery with search and category filtering.
+7. Keep metadata parsing in `tool_metadata.py`.
+8. Generate sitemap from real script metadata.
 
 ## Change Boundaries
 

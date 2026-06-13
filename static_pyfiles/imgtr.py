@@ -33,19 +33,30 @@
 # - Click: BSD-3-Clause License (https://github.com/pallets/click)
 
 """
-Image processing tool with various operations
+Transform a single image with effects and resizing
 
-A comprehensive image processor supporting resize, rotate, crop, brightness,
-contrast, blur, sharpen, and grayscale operations with quality optimization.
+A single-image transformer for resize, rotate, crop, brightness, contrast,
+blur, sharpen and grayscale operations. Use `imgtrans.py` when you need batch
+format conversion or compression.
 
-Version: 0.9.0
-Category: Media
+Version: 0.9.1
+Category: Image
 Author: UVPY.RUN
 
 Usage Examples:
-    uv run imgtr.py photo.jpg --resize 800,600
+    uv run imgtr.py photo.jpg --resize 800,600 --output resized.jpg
     uv run imgtr.py photo.jpg --grayscale --blur 2.0
-    uv run imgtr.py photo.jpg --brightness 1.2 --contrast 1.1
+    uv run imgtr.py photo.jpg --brightness 1.2 --contrast 1.1 --format webp
+
+Use It For:
+    - Applying quick edits to one image from the terminal
+    - Resizing, cropping, rotating, or exporting a single file
+    - Testing visual effects before building a repeatable batch workflow
+
+Supported Edits:
+    - Resize by width or explicit width,height
+    - Apply grayscale, blur, sharpen, brightness, and contrast changes
+    - Export to JPEG, PNG, or WebP with configurable quality
 """
 
 import click
@@ -59,7 +70,12 @@ from pathlib import Path
 @click.option("--output", "-o", help="Output file path")
 @click.option("--resize", "-r", help="Resize image (width,height or width)")
 @click.option("--quality", "-q", default=85, help="JPEG quality (1-100)")
-@click.option("--format", "-f", help="Output format (jpeg, png, webp)")
+@click.option(
+    "--format",
+    "-f",
+    type=click.Choice(["jpeg", "jpg", "png", "webp"], case_sensitive=False),
+    help="Output format (jpeg, jpg, png, webp)",
+)
 @click.option("--rotate", help="Rotate image (degrees)")
 @click.option("--crop", help="Crop image (x,y,width,height)")
 @click.option("--brightness", type=float, help="Adjust brightness (0.5-2.0)")
@@ -155,12 +171,15 @@ def process_image(
 
         # Determine save format
         if format:
-            save_format = format.upper()
-            if format.lower() == "jpeg":
+            format_name = format.lower()
+            if format_name in ("jpeg", "jpg"):
+                save_format = "JPEG"
                 output_path = output_path.with_suffix(".jpg")
-            elif format.lower() == "png":
+            elif format_name == "png":
+                save_format = "PNG"
                 output_path = output_path.with_suffix(".png")
-            elif format.lower() == "webp":
+            elif format_name == "webp":
+                save_format = "WEBP"
                 output_path = output_path.with_suffix(".webp")
         else:
             save_format = img.format or "JPEG"
@@ -197,8 +216,7 @@ def process_image(
             click.echo(f"File size increased by {abs(compression_ratio):.1f}%")
 
     except Exception as e:
-        click.echo(f"Error processing image: {str(e)}", err=True)
-        return 1
+        raise click.ClickException(f"Error processing image: {e}") from e
 
 
 if __name__ == "__main__":

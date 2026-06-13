@@ -183,13 +183,19 @@ def parse_docstring_metadata(filename, docstring_lines):
             [],
         )
 
-    title = docstring_lines[0].strip()
-    description = title[:100] + ("..." if len(title) > 100 else "")
     full_docstring = "\n".join(docstring_lines)
     overview, sections = parse_docstring_content(docstring_lines)
+    title = docstring_lines[0].strip()
+    description = summarize_description(overview, title)
     usage_examples = parse_usage_examples(docstring_lines, filename)
 
     return title, description, full_docstring, overview, sections, usage_examples
+
+
+def summarize_description(overview, fallback, limit=160):
+    """Create a short meta description from overview text."""
+    source = " ".join((overview or fallback).split())
+    return source[:limit] + ("..." if len(source) > limit else "")
 
 
 def parse_docstring_field(docstring_lines, field_name):

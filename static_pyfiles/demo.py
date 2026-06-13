@@ -1,3 +1,8 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
+
 # MIT License
 #
 # Copyright (c) 2025 UVPY.RUN
@@ -21,22 +26,48 @@
 # SOFTWARE.
 
 """
-Demo script for testing remote execution
+Verify uv remote script execution with a tiny demo
 
-A simple demonstration script that prints a message to verify remote execution
-functionality with uv run. Used for testing the config-txt system.
+A tiny script that prints a predictable message so users can confirm that
+`uv run <url>` fetched and executed a remote Python file successfully.
 
-Version: 0.1.0
-Category: Demo
+Version: 0.2.0
+Category: Developer
 Author: UVPY.RUN
 
 Usage Examples:
     uv run demo.py
+    uv run demo.py --message "Hello from uvpy.run"
+
+Use It For:
+    - Confirming that uv can fetch and run a script from a URL
+    - Testing a uvpy.run deployment without touching files or services
+    - Showing the smallest possible standalone script pattern
+
+Output:
+    - Prints one confirmation line and exits
+    - Accepts a custom --message when you want a recognizable test string
 """
 
-print(
-    (
-        "Demo print from excuting remote .py file locaaly."
-        "Viste https://uvpy.run for more infomation."
+import argparse
+
+
+DEFAULT_MESSAGE = "Demo: uv successfully ran this script from uvpy.run."
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Print a tiny confirmation message for uv remote execution."
     )
-)
+    parser.add_argument(
+        "--message",
+        default=DEFAULT_MESSAGE,
+        help="Message to print instead of the default confirmation.",
+    )
+    args = parser.parse_args()
+
+    print(args.message)
+
+
+if __name__ == "__main__":
+    main()

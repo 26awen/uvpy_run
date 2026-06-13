@@ -31,13 +31,13 @@
 # - Click: BSD-3-Clause License (https://github.com/pallets/click)
 
 """
-Beautiful calendar printer with highlighting features
+Print monthly and yearly calendars in the terminal
 
 A command-line calendar tool that displays formatted monthly or yearly calendars
 with current day highlighting and customizable week start options.
 
-Version: 0.8.0
-Category: Utility
+Version: 0.8.1
+Category: Time
 Author: UVPY.RUN
 
 Usage Examples:
@@ -45,6 +45,16 @@ Usage Examples:
     uv run cld.py -m 6 -h
     uv run cld.py -a -h
     uv run cld.py -y 2025 -m 1-3 -s
+
+Use It For:
+    - Printing the current month without leaving the terminal
+    - Reviewing a specific month, month range, or full year
+    - Highlighting today's date when you need quick calendar context
+
+Display Options:
+    - Weeks start on Monday by default
+    - Use --start-sunday when you prefer Sunday-first calendars
+    - Month input accepts single values, comma lists, and ranges
 """
 
 import calendar
@@ -99,12 +109,16 @@ def highlight_current_day(
     return "\n".join(lines)
 
 
-def print_single_month(year: int, month: int, highlight_today: bool = False) -> None:
-    """Print calendar for a single month with beautiful formatting."""
+def print_single_month(
+    year: int,
+    month: int,
+    highlight_today: bool = False,
+    first_weekday: int = calendar.MONDAY,
+) -> None:
+    """Print calendar for a single month with terminal formatting."""
     print_calendar_header(year, month)
 
-    # Create calendar object with Monday as first day (can be changed to Sunday if preferred)
-    cal = calendar.TextCalendar(calendar.MONDAY)
+    cal = calendar.TextCalendar(first_weekday)
     month_calendar = cal.formatmonth(year, month)
 
     # Extract the calendar part (skip the first line which contains month/year)
@@ -123,7 +137,10 @@ def print_single_month(year: int, month: int, highlight_today: bool = False) -> 
 
 
 def print_multiple_months(
-    year: int, months: List[int], highlight_today: bool = False
+    year: int,
+    months: List[int],
+    highlight_today: bool = False,
+    first_weekday: int = calendar.MONDAY,
 ) -> None:
     """Print calendars for multiple months."""
     print(f"\nCalendar for {year}")
@@ -131,7 +148,7 @@ def print_multiple_months(
 
     for month in sorted(months):
         if 1 <= month <= 12:
-            print_single_month(year, month, highlight_today)
+            print_single_month(year, month, highlight_today, first_weekday)
         else:
             click.echo(f"Warning: Invalid month {month}, skipping...", err=True)
 
@@ -224,11 +241,7 @@ def calendar_printer(
     uv run cld.py -y 2025 -m 1-3 -h
     """
 
-    # Set calendar first day of week
-    if start_sunday:
-        calendar.setfirstweekday(calendar.SUNDAY)
-    else:
-        calendar.setfirstweekday(calendar.MONDAY)
+    first_weekday = calendar.SUNDAY if start_sunday else calendar.MONDAY
 
     # Show current time info if highlighting
     if highlight:
@@ -241,7 +254,7 @@ def calendar_printer(
     if all:
         # Print entire year
         months = list(range(1, 13))
-        print_multiple_months(year, months, highlight)
+        print_multiple_months(year, months, highlight, first_weekday)
     elif month:
         # Parse and print specified months
         try:
@@ -251,18 +264,16 @@ def calendar_printer(
                 raise click.BadParameter(f"Invalid months: {invalid_months}")
 
             if len(months) == 1:
-                print_single_month(year, months[0], highlight)
+                print_single_month(year, months[0], highlight, first_weekday)
             else:
-                print_multiple_months(year, months, highlight)
+                print_multiple_months(year, months, highlight, first_weekday)
         except click.BadParameter as e:
-            click.echo(f"Error: {e}", err=True)
-            return
+            raise click.UsageError(str(e)) from e
     else:
         # Print current month by default
         current_month = datetime.now().month
-        print_single_month(year, current_month, highlight)
+        print_single_month(year, current_month, highlight, first_weekday)
 
 
 if __name__ == "__main__":
     calendar_printer()
-

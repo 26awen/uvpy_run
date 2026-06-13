@@ -1,8 +1,8 @@
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#     "click",
-#     "requests",
+#     "click>=8.0.0",
+#     "requests>=2.31.0",
 # ]
 # ///
 
@@ -33,23 +33,32 @@
 # - Requests: Apache-2.0 License (https://github.com/psf/requests)
 
 """
-IP address and location information lookup tool
+Look up public IP and location data from ipinfo.io
 
 A command-line utility for retrieving current IP address and location information
 using the ipinfo.io service. Supports both current IP lookup and specific IP address
 queries with flexible output formats.
 
-
-
-Version: 0.6.0
-Category: Network Utility
+Version: 0.7.0
+Category: Network
 Author: UVPY.RUN
 
 Usage Examples:
+    uv run terminal_proxy_ip.py --help
     uv run terminal_proxy_ip.py current
     uv run terminal_proxy_ip.py current --format json --verbose
     uv run terminal_proxy_ip.py lookup 8.8.8.8
     uv run terminal_proxy_ip.py lookup 1.1.1.1 --format json --verbose
+
+Use It For:
+    - Checking the public IP address seen by ipinfo.io
+    - Looking up city, region, country, organization, and timezone data
+    - Comparing your current network path with a specific IP address
+
+Network Notes:
+    - Sends requests to the ipinfo.io API
+    - JSON mode prints machine-readable output without status chatter
+    - Location data is approximate and depends on the external provider
 """
 
 # WARN: if you have problem, see https://ipinfo.io/missingauth
@@ -60,15 +69,19 @@ from typing import Dict, Any, Optional
 import json
 
 
-def get_ip_info() -> Optional[Dict[str, Any]]:
-    """Get current IP address and location information from ipinfo.io"""
+def fetch_ip_info(url: str) -> Optional[Dict[str, Any]]:
+    """Fetch IP address and location information from ipinfo.io."""
     try:
-        response = requests.get("https://ipinfo.io/json", timeout=10)
+        response = requests.get(url, timeout=10)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
-        click.echo(f"Error getting IP information: {e}")
-        return None
+        raise click.ClickException(f"Could not fetch IP information: {e}") from e
+
+
+def get_ip_info() -> Optional[Dict[str, Any]]:
+    """Get current IP address and location information from ipinfo.io."""
+    return fetch_ip_info("https://ipinfo.io/json")
 
 
 def parse_location(loc_str: str) -> tuple[str, str]:
@@ -83,101 +96,70 @@ def parse_location(loc_str: str) -> tuple[str, str]:
         return "Unknown", "Unknown"
 
 
+def echo_ip_info(ip_info: Dict[str, Any], output_format: str, verbose: bool) -> None:
+    """Display IP information as JSON or a readable table."""
+    if output_format == "json":
+        click.echo(json.dumps(ip_info, indent=2, sort_keys=True))
+        return
+
+    click.echo(f"IP Address: {ip_info.get('ip', 'Unknown')}")
+    click.echo(f"City: {ip_info.get('city', 'Unknown')}")
+    click.echo(f"Region: {ip_info.get('region', 'Unknown')}")
+    click.echo(f"Country: {ip_info.get('country', 'Unknown')}")
+
+    if not verbose:
+        return
+
+    click.echo(f"Organization: {ip_info.get('org', 'Unknown')}")
+    click.echo(f"Timezone: {ip_info.get('timezone', 'Unknown')}")
+    click.echo(f"Postal Code: {ip_info.get('postal', 'Unknown')}")
+
+    loc = ip_info.get("loc", "")
+    if loc:
+        lat, lng = parse_location(loc)
+        click.echo(f"Latitude: {lat}")
+        click.echo(f"Longitude: {lng}")
+    else:
+        click.echo("Latitude: Unknown")
+        click.echo("Longitude: Unknown")
+
+    hostname = ip_info.get("hostname")
+    if hostname:
+        click.echo(f"Hostname: {hostname}")
+
+
 @click.command()
 @click.option("--format", "-f", type=click.Choice(["json", "table"]), default="table", 
               help="Output format (json or table)")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed information")
 def main(format: str, verbose: bool) -> None:
-    """Get current proxy IP address and location information using ipinfo.io"""
-    click.echo("Fetching current IP information from ipinfo.io...")
+    """Get current public IP address and location information using ipinfo.io"""
+    if format != "json":
+        click.echo("Fetching current IP information from ipinfo.io...")
     
     # Get IP information from ipinfo.io
     ip_info = get_ip_info()
     if not ip_info:
-        click.echo("Failed to retrieve IP information")
-        return
-    
-    # Output results based on format
-    if format == "json":
-        click.echo(json.dumps(ip_info, indent=2))
-    else:
-        # Display in table format
-        click.echo(f"IP Address: {ip_info.get('ip', 'Unknown')}")
-        click.echo(f"City: {ip_info.get('city', 'Unknown')}")
-        click.echo(f"Region: {ip_info.get('region', 'Unknown')}")
-        click.echo(f"Country: {ip_info.get('country', 'Unknown')}")
-        
-        if verbose:
-            click.echo(f"Organization: {ip_info.get('org', 'Unknown')}")
-            click.echo(f"Timezone: {ip_info.get('timezone', 'Unknown')}")
-            click.echo(f"Postal Code: {ip_info.get('postal', 'Unknown')}")
-            
-            # Parse and display coordinates
-            loc = ip_info.get('loc', '')
-            if loc:
-                lat, lng = parse_location(loc)
-                click.echo(f"Latitude: {lat}")
-                click.echo(f"Longitude: {lng}")
-            else:
-                click.echo("Latitude: Unknown")
-                click.echo("Longitude: Unknown")
-            
-            # Display hostname if available
-            hostname = ip_info.get('hostname')
-            if hostname:
-                click.echo(f"Hostname: {hostname}")
+        raise click.ClickException("No IP information returned")
+
+    echo_ip_info(ip_info, format, verbose)
 
 
 @click.command()
-@click.argument("ip_address", required=False)
+@click.argument("ip_address")
 @click.option("--format", "-f", type=click.Choice(["json", "table"]), default="table", 
               help="Output format (json or table)")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed information")
-def lookup(ip_address: Optional[str], format: str, verbose: bool) -> None:
+def lookup(ip_address: str, format: str, verbose: bool) -> None:
     """Look up information for a specific IP address"""
-    if not ip_address:
-        click.echo("Please provide an IP address to look up")
-        return
+    if format != "json":
+        click.echo(f"Looking up information for IP: {ip_address}")
     
-    click.echo(f"Looking up information for IP: {ip_address}")
-    
-    try:
-        response = requests.get(f"https://ipinfo.io/{ip_address}/json", timeout=10)
-        response.raise_for_status()
-        ip_info = response.json()
-    except requests.RequestException as e:
-        click.echo(f"Error looking up IP information: {e}")
-        return
-    
-    # Output results based on format
-    if format == "json":
-        click.echo(json.dumps(ip_info, indent=2))
-    else:
-        # Display in table format
-        click.echo(f"IP Address: {ip_info.get('ip', 'Unknown')}")
-        click.echo(f"City: {ip_info.get('city', 'Unknown')}")
-        click.echo(f"Region: {ip_info.get('region', 'Unknown')}")
-        click.echo(f"Country: {ip_info.get('country', 'Unknown')}")
-        
-        if verbose:
-            click.echo(f"Organization: {ip_info.get('org', 'Unknown')}")
-            click.echo(f"Timezone: {ip_info.get('timezone', 'Unknown')}")
-            click.echo(f"Postal Code: {ip_info.get('postal', 'Unknown')}")
-            
-            # Parse and display coordinates
-            loc = ip_info.get('loc', '')
-            if loc:
-                lat, lng = parse_location(loc)
-                click.echo(f"Latitude: {lat}")
-                click.echo(f"Longitude: {lng}")
-            else:
-                click.echo("Latitude: Unknown")
-                click.echo("Longitude: Unknown")
-            
-            # Display hostname if available
-            hostname = ip_info.get('hostname')
-            if hostname:
-                click.echo(f"Hostname: {hostname}")
+    ip_info = fetch_ip_info(f"https://ipinfo.io/{ip_address}/json")
+    if not ip_info:
+        raise click.ClickException("No IP information returned")
+
+    echo_ip_info(ip_info, format, verbose)
 
 
 @click.group()

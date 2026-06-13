@@ -114,6 +114,13 @@ Author: UVPY.RUN
 Usage Examples:
     uv run tool_name.py --help
     uv run tool_name.py example-argument
+
+Use It For:
+    - Solving one clear terminal task
+    - Producing copy-ready output or a small local file
+
+Notes:
+    - Mention filesystem, network, security, or long-running behavior here
 """
 ```
 
@@ -123,6 +130,8 @@ Preferred script behavior:
 - Keep side effects explicit and documented.
 - Use clear error messages.
 - Keep examples copy-ready and realistic.
+- Add at least one named docstring section after examples so the detail page's
+  "What it does" panel stays scannable.
 - Avoid hidden network or filesystem behavior.
 
 ## Security Model
@@ -173,10 +182,16 @@ signals visible:
 
 ### Phase 4: Raise Tool Quality
 
-- Normalize every script's PEP 723 block and docstring.
-- Ensure each tool supports `--help` where appropriate.
-- Add a local metadata lint command.
-- Review scripts for naming, examples and side effects.
+- [x] Normalize every script's PEP 723 block and docstring.
+- [x] Ensure each tool supports `--help` where appropriate.
+- [x] Review scripts for naming, examples and side effects.
+- [x] Add tests for catalog metadata, usage examples and CLI help.
+- [ ] Add a local metadata lint command.
+- [ ] Consider clearer public aliases for tools whose URLs should not be renamed casually.
+
+Current stable categories are `Developer`, `File`, `Game`, `Image`, `Network`,
+`Security`, `System`, `Text` and `Time`. New scripts should use one of these
+categories unless the taxonomy is intentionally updated with tests.
 
 ## Tool Backlog
 
@@ -220,14 +235,14 @@ useful, low risk and can become examples for future tool quality:
 
 ### Security And Secret Helpers
 
-- [ ] Improve `passwordgen.py` with clearer options and examples.
-- [ ] Improve `flask_secret.py` into a more general secret generator.
+- [x] Improve `passwordgen.py` with cryptographic randomness and clearer validation.
+- [x] Improve `flask_secret.py` into a more general secret generator.
 - [ ] `jwtpeek.py` - decode JWT headers and payloads without verification.
 - [ ] `totp_uri.py` - inspect otpauth URLs without exposing secrets by default.
 
 ### Image And Media Utilities
 
-- [ ] Clarify or merge `imgtr.py` and `imgtrans.py`.
+- [x] Clarify `imgtr.py` and `imgtrans.py` as single-image transform vs batch conversion tools.
 - [ ] `imgresize.py` - resize one image or a directory of images.
 - [ ] `imgcompress.py` - compress common image formats.
 - [ ] `exifstrip.py` - remove image metadata.
@@ -236,14 +251,15 @@ useful, low risk and can become examples for future tool quality:
 ### File And System Utilities
 
 - [ ] Improve `disk_usage.py` with clearer output and edge-case handling.
-- [ ] Improve `mkdir_batch.py` with dry-run and safer conflict handling.
+- [x] Improve `mkdir_batch.py` with dry-run and safer conflict handling.
 - [ ] `rename_batch.py` - batch rename files, defaulting to dry-run.
 - [ ] `find_large.py` - find large files under a directory.
 - [ ] `backup_manifest.py` - generate a file hash manifest.
 
 ### Generation Utilities
 
-- [ ] Improve `qr.py` and add more copy-ready examples.
+- [x] Improve `qr.py` title/category for clearer discovery.
+- [ ] Add more copy-ready QR examples.
 - [ ] `qrcode_wifi.py` - generate Wi-Fi QR codes.
 - [ ] `lorem.py` - generate placeholder text.
 - [ ] `fake_data.py` - generate small fake datasets for demos.
@@ -254,11 +270,11 @@ useful, low risk and can become examples for future tool quality:
 - [ ] Keep and polish: `passwordgen.py`, `flask_secret.py`, `qr.py`.
 - [ ] Keep but standardize: `disk_usage.py`, `mkdir_batch.py`, `nospace.py`,
       `cld.py`.
-- [ ] Clarify naming and scope: `imgtr.py`, `imgtrans.py`.
+- [x] Clarify naming and scope in metadata: `imgtr.py`, `imgtrans.py`.
 - [ ] Keep as showcase or fun extras: `snake.py`, `brick.py`.
 - [ ] Keep as advanced/self-use tools with clearer docs:
       `aria2rpc_watch.py`, `terminal_proxy_ip.py`.
-- [ ] Move or normalize: `demo.py`.
+- [x] Normalize: `demo.py`.
 
 ### Phase 5: Automate SEO
 

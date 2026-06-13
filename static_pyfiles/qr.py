@@ -33,19 +33,29 @@
 # - qrcode: BSD License (https://github.com/lincolnloop/python-qrcode)
 
 """
-Generate QR codes with customizable styles and options
+Generate QR code images from text
 
 A command-line utility for creating QR codes from text input.
 Supports square and rounded styles with adjustable size settings.
 
-Version: 0.8.0
-Category: Utility
+Version: 0.8.1
+Category: Image
 Author: UVPY.RUN
 
 Usage Examples:
     uv run qr.py "Hello World"
     uv run qr.py "https://example.com" --output myqr.png --style rounded
     uv run qr.py "Contact info" --size 15 --border 2
+
+Use It For:
+    - Turning URLs, contact text, or short messages into QR code images
+    - Creating quick shareable PNG files from terminal input
+    - Choosing square or rounded modules for simple styling
+
+Output:
+    - Saves a PNG file, defaulting to qrcode.png
+    - Lets you tune module size and border width
+    - Prints the output path after the image is written
 """
 
 import click

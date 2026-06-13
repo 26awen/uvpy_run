@@ -29,9 +29,10 @@
 Generate secure passwords with customizable options
 
 A password generator for daily account registration with configurable length,
-character sets, and security options. Excludes ambiguous characters by default.
+character sets, and security options. Uses Python's cryptographic `secrets`
+module and excludes ambiguous characters by default.
 
-Version: 0.7.0
+Version: 0.8.0
 Category: Security
 Author: UVPY.RUN
 
@@ -39,11 +40,24 @@ Usage Examples:
     uv run passwordgen.py
     uv run passwordgen.py -l 16 -c 3
     uv run passwordgen.py --no-symbols --length 12
+
+Use It For:
+    - Generating multiple account passwords at once
+    - Avoiding ambiguous characters like 0, O, 1, and l by default
+    - Creating passwords with or without symbols depending on site rules
+
+Security Notes:
+    - Uses Python's secrets-backed SystemRandom
+    - Includes at least one lowercase letter, uppercase letter, and digit
+    - Adds a symbol requirement unless --no-symbols is used
 """
 
-import random
-import string
 import argparse
+import secrets
+import string
+
+
+RANDOM = secrets.SystemRandom()
 
 
 def generate_password(
@@ -78,22 +92,22 @@ def generate_password(
     if include_symbols:
         char_pool += symbols
 
-    # Ensure at least one character from each required type
+    # Ensure at least one character from each required type.
     password: list[str] = []
-    password.append(random.choice(lowercase))
-    password.append(random.choice(uppercase))
-    password.append(random.choice(digits))
+    password.append(RANDOM.choice(lowercase))
+    password.append(RANDOM.choice(uppercase))
+    password.append(RANDOM.choice(digits))
 
     if include_symbols:
-        password.append(random.choice(symbols))
+        password.append(RANDOM.choice(symbols))
 
     # Fill remaining length with random characters
     remaining_length = length - len(password)
     for _ in range(remaining_length):
-        password.append(random.choice(char_pool))
+        password.append(RANDOM.choice(char_pool))
 
     # Shuffle the password to randomize position of required characters
-    random.shuffle(password)
+    RANDOM.shuffle(password)
 
     return "".join(password)
 
@@ -127,7 +141,10 @@ def main():
     min_length = 4 if not args.no_symbols else 3
     if args.length < min_length:
         print(f"Error: Password length must be at least {min_length}")
-        return
+        raise SystemExit(2)
+    if args.count <= 0:
+        print("Error: Password count must be greater than 0")
+        raise SystemExit(2)
 
     print(f"Generating {args.count} password(s) with {args.length} characters:")
     print("-" * 50)
