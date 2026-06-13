@@ -1,8 +1,9 @@
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#     "click>=8.0.0",
-#     "textual>=0.41.0",
+#     "click>=8.2.1",
+#     "rich>=14.1.0",
+#     "textual>=6.1.0",
 # ]
 # ///
 
@@ -30,16 +31,18 @@
 #
 # Third-party Dependencies:
 # - Click: BSD-3-Clause License (https://github.com/pallets/click)
+# - Rich: MIT License (https://github.com/Textualize/rich)
 # - Textual: MIT License (https://github.com/Textualize/textual)
 
 """
-Classic Snake Game with Terminal UI
+Classic Snake Game with a Textual terminal UI
 
-A polished terminal Snake game powered by Textual. It starts fast, looks good in
-a normal terminal window, and lets you tune the board size, speed, and two-player
-mode from the command line.
+A polished terminal Snake game powered by Textual and Rich. It opens into a
+full-screen command-line game, uses styled terminal rendering, and lets you tune
+the board size, speed, player count, and glyph compatibility from the command
+line.
 
-Version: 0.9.1
+Version: 1.0.0
 Category: Game
 Author: UVPY.RUN
 
@@ -48,33 +51,38 @@ Usage Examples:
     uv run snake.py
     uv run snake.py -w 24 -h 14 -s 4
     uv run snake.py --two-player --width 40 --height 20 --speed 6
+    uv run snake.py --ascii
 
 Use It For:
     - Trying a real interactive terminal app from one uv command
     - Demoing PEP 723 dependency metadata with Textual installed on demand
     - Playing a quick keyboard game without cloning a repository
+    - Checking how Rich styling and Textual key bindings feel in a small script
 
 Game Controls (Single Player):
     - WASD or Arrow Keys: Move the snake
-    - SPACE: Pause/Resume game
-    - R: Restart game
-    - Q: Quit game
+    - SPACE: Pause or resume
+    - R: Restart
+    - Q: Quit
 
 Game Controls (Two Player):
-    - Player 1: WASD keys to move
-    - Player 2: Arrow keys to move
-    - SPACE: Pause/Resume game
-    - R: Restart game
-    - Q: Quit game
+    - Player 1: WASD keys
+    - Player 2: Arrow keys
+    - SPACE: Pause or resume
+    - R: Restart
+    - Q: Quit
 
 Game Elements:
-    - @: Player 1 snake head / Single player snake head
-    - #: Player 1 snake body / Single player snake body
+    - @: Player 1 snake head / single-player snake head
+    - #: Player 1 snake body / single-player snake body
     - &: Player 2 snake head
     - =: Player 2 snake body
-    - ×: Dead snake body (remains on field)
-    - *: Food
+    - x: Dead snake body in ASCII mode
+    - ×: Dead snake body in styled mode
+    - * or ◆: Food
 """
+
+from __future__ import annotations
 
 import random
 from dataclasses import dataclass
@@ -82,476 +90,196 @@ from enum import Enum
 from typing import Optional
 
 import click
-from textual.app import App, ComposeResult
-from textual.reactive import reactive
-from textual.widgets import Static
+from rich import box
+from rich.align import Align
+from rich.console import Group
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
 from textual import events
+from textual.app import App, ComposeResult
+from textual.binding import Binding
+from textual.reactive import reactive
+from textual.widgets import Footer, Header, Static
 
 
 DEFAULT_WIDTH = 32
 DEFAULT_HEIGHT = 18
 DEFAULT_SPEED = 7
 STARTING_LENGTH = 3
+POINTS_PER_FOOD = 10
+
+CELL_EMPTY = "empty"
+CELL_FOOD = "food"
+CELL_HEAD_1 = "head1"
+CELL_BODY_1 = "body1"
+CELL_HEAD_2 = "head2"
+CELL_BODY_2 = "body2"
+CELL_DEAD = "dead"
+
+GLYPHS = {
+    CELL_EMPTY: "·",
+    CELL_FOOD: "◆",
+    CELL_HEAD_1: "@",
+    CELL_BODY_1: "#",
+    CELL_HEAD_2: "&",
+    CELL_BODY_2: "=",
+    CELL_DEAD: "×",
+}
+
+ASCII_GLYPHS = {
+    CELL_EMPTY: " ",
+    CELL_FOOD: "*",
+    CELL_HEAD_1: "@",
+    CELL_BODY_1: "#",
+    CELL_HEAD_2: "&",
+    CELL_BODY_2: "=",
+    CELL_DEAD: "x",
+}
+
+CELL_STYLES = {
+    CELL_EMPTY: "dim #365044",
+    CELL_FOOD: "bold #ffcc66",
+    CELL_HEAD_1: "bold #7dff9b",
+    CELL_BODY_1: "#38d878",
+    CELL_HEAD_2: "bold #7cc7ff",
+    CELL_BODY_2: "#4d8dff",
+    CELL_DEAD: "dim #d45d5d",
+}
 
 
 class Direction(Enum):
-    """Enumeration for movement directions with row/column deltas"""
+    """Movement directions with row/column deltas."""
+
     UP = (-1, 0)
     DOWN = (1, 0)
     LEFT = (0, -1)
     RIGHT = (0, 1)
 
 
+OPPOSITE_DIRECTIONS = {
+    Direction.UP: Direction.DOWN,
+    Direction.DOWN: Direction.UP,
+    Direction.LEFT: Direction.RIGHT,
+    Direction.RIGHT: Direction.LEFT,
+}
+
+
 @dataclass(frozen=True)
 class Position:
-    """Represents a position on the game board with row and column coordinates"""
+    """A board position with row and column coordinates."""
+
     row: int
     col: int
-    
+
     def __add__(self, direction: Direction) -> "Position":
-        """Add a direction to this position to get a new position"""
         dr, dc = direction.value
         return Position(self.row + dr, self.col + dc)
 
 
 class SnakeGame(App):
-    """
-    Main Snake Game application using Textual framework
-    
-    This class handles the game logic, display, and user input for the Snake game.
-    The snake moves continuously in the current direction, growing when it eats food.
-    """
-    
+    """Textual Snake with polished rendering and small, testable game logic."""
+
     CSS = """
     Screen {
-        background: black;
+        align: center middle;
+        background: #07100c;
+        color: #dbffe9;
     }
-    
+
+    Header {
+        background: #10241d;
+        color: #dbffe9;
+    }
+
+    Footer {
+        background: #10241d;
+        color: #dbffe9;
+    }
+
     #game {
-        background: black;
-        color: white;
-        border: solid green;
-        margin: 1;
-        padding: 1;
-        text-align: center;
+        width: auto;
+        height: auto;
+        margin: 1 2;
     }
     """
-    
-    # Reactive attributes
+
+    BINDINGS = [
+        Binding("space", "toggle_pause", "Pause", show=True),
+        Binding("r", "restart", "Restart", show=True),
+        Binding("q", "quit", "Quit", show=True),
+    ]
+
+    TITLE = "uvpy.run Snake"
+    SUB_TITLE = "Textual terminal showcase"
+
     score = reactive(0)
     game_over = reactive(False)
-    
+
     def __init__(
         self,
         width: int = DEFAULT_WIDTH,
         height: int = DEFAULT_HEIGHT,
         speed: int = DEFAULT_SPEED,
         two_player: bool = False,
+        ascii_only: bool = False,
     ):
-        """
-        Initialize the Snake game with specified dimensions and speed
-        
-        Args:
-            width: Game board width in characters
-            height: Game board height in characters
-            speed: Game speed level (1-15, higher is faster)
-            two_player: Enable two-player mode
-        """
         super().__init__()
         self.width = width
         self.height = height
         self.speed = speed
         self.two_player = two_player
-        
-        # Initialize game state
-        if two_player:
-            # Player 1 starts on left side, Player 2 on right side
-            self.direction1 = Direction.RIGHT
-            self.direction2 = Direction.LEFT
-            self.snake1 = self._build_starting_snake(
-                Position(height // 2, width // 4),
-                self.direction1,
-            )
-            self.snake2 = self._build_starting_snake(
-                Position(height // 2, 3 * width // 4),
-                self.direction2,
-            )
-            self.alive1 = True
-            self.alive2 = True
-            self.score1 = 0
-            self.score2 = 0
-            # Store dead snake bodies
-            self.dead_bodies: list[Position] = []
-        else:
-            # Single player mode
-            self.direction = Direction.RIGHT  # Initial movement direction
-            self.snake = self._build_starting_snake(
-                Position(height // 2, width // 2),
-                self.direction,
-            )
-        
-        self.food: Optional[Position] = None  # Food position
-        self.paused = False  # Pause state
+        self.ascii_only = ascii_only
+
+        self.game_display: Static | None = None
+        self.food: Optional[Position] = None
+        self.paused = False
         self.won = False
-        
-        # Generate initial food
-        self._generate_food()
-    
+        self.high_score = 0
+        self.food_eaten = 0
+        self.ticks = 0
+        self.last_message = "Eat food, grow longer, and keep moving."
+
+        self._reset_game_state(reset_high_score=True)
+
     def compose(self) -> ComposeResult:
-        """Create the game display widget"""
+        """Create Textual widgets for the game shell."""
+
+        yield Header(show_clock=True)
         self.game_display = Static("", id="game")
         yield self.game_display
-        self._update_display()
-    
+        yield Footer()
+
     def on_mount(self) -> None:
-        """Start the game timer when app loads"""
-        # Calculate update interval based on speed (faster speed = shorter interval)
-        interval = max(0.05, 0.5 - (self.speed - 1) * 0.03)
-        self.set_interval(interval, self._game_loop)
-        self.title = "Snake Game"
+        """Start the game timer when the app mounts."""
 
-    def _build_starting_snake(
-        self,
-        head: Position,
-        direction: Direction,
-        length: int = STARTING_LENGTH,
-    ) -> list[Position]:
-        """Build a starting snake body behind the head."""
-        dr, dc = direction.value
-        return [
-            Position(head.row - dr * offset, head.col - dc * offset)
-            for offset in range(length)
-        ]
-
-    def _occupied_positions(self) -> set[Position]:
-        """Return every board position currently occupied by snake bodies."""
-        if self.two_player:
-            return set(self.snake1) | set(self.snake2) | set(self.dead_bodies)
-        return set(self.snake)
-    
-    def _generate_food(self) -> None:
-        """Generate food at a random empty position on the board"""
-        occupied_positions = self._occupied_positions()
-        open_positions = [
-            Position(row, col)
-            for row in range(self.height)
-            for col in range(self.width)
-            if Position(row, col) not in occupied_positions
-        ]
-
-        if not open_positions:
-            self.food = None
-            self.won = True
-            self.game_over = True
-            return
-
-        self.food = random.choice(open_positions)
-    
-    def _game_loop(self) -> None:
-        """
-        Main game update loop - called at regular intervals
-        
-        Handles snake movement, collision detection, food consumption,
-        and game state updates.
-        """
-        if self.game_over or self.paused:
-            return
-        
-        if self.two_player:
-            self._update_two_player()
-        else:
-            self._update_single_player()
-        
+        self.set_interval(self._tick_interval(), self._game_loop)
         self._update_display()
-    
-    def _update_single_player(self) -> None:
-        """Update logic for single player mode"""
-        # Calculate new head position based on current direction
-        new_head = self.snake[0] + self.direction
-        
-        # Check wall collision
-        if self._is_out_of_bounds(new_head):
-            self.game_over = True
-            return
-        
-        # Moving into the current tail is legal when the snake is not growing.
-        will_grow = new_head == self.food
-        body_to_check = self.snake if will_grow else self.snake[:-1]
-        if new_head in body_to_check:
-            self.game_over = True
-            return
-        
-        # Add new head to snake
-        self.snake.insert(0, new_head)
-        
-        # Check if snake ate food
-        if new_head == self.food:
-            self.score += 10  # Increase score
-            self._generate_food()  # Generate new food
-            # Snake grows (don't remove tail)
-        else:
-            # Remove tail (snake moves without growing)
-            self.snake.pop()
 
-    def _is_out_of_bounds(self, position: Position) -> bool:
-        """Return whether a position is outside the game board."""
-        return (
-            position.row < 0
-            or position.row >= self.height
-            or position.col < 0
-            or position.col >= self.width
-        )
+    def _tick_interval(self) -> float:
+        """Convert the user-facing speed value into a timer interval."""
 
-    def _kill_player(self, player: int) -> None:
-        """Mark a two-player snake as dead and leave its body on the board."""
-        if player == 1 and self.alive1:
-            self.alive1 = False
-            self.dead_bodies.extend(self.snake1)
-        elif player == 2 and self.alive2:
-            self.alive2 = False
-            self.dead_bodies.extend(self.snake2)
-    
-    def _update_two_player(self) -> None:
-        """Update logic for two player mode"""
-        new_heads = []
-        
-        # Calculate new head positions for both players
-        if self.alive1:
-            new_head1 = self.snake1[0] + self.direction1
-            new_heads.append((1, new_head1))
-        
-        if self.alive2:
-            new_head2 = self.snake2[0] + self.direction2
-            new_heads.append((2, new_head2))
-        
-        # Check collisions for each alive snake
-        for player, new_head in new_heads:
-            # Check wall collision
-            if self._is_out_of_bounds(new_head):
-                self._kill_player(player)
-                continue
-            
-            # Check collision with own body
-            current_snake = self.snake1 if player == 1 else self.snake2
-            will_grow = new_head == self.food
-            body_to_check = current_snake if will_grow else current_snake[:-1]
-            if new_head in body_to_check:
-                self._kill_player(player)
-                continue
-            
-            # Check collision with other snake's body
-            other_snake = self.snake2 if player == 1 else self.snake1
-            if new_head in other_snake:
-                self._kill_player(player)
-                continue
-            
-            # Check collision with dead bodies
-            if new_head in self.dead_bodies:
-                self._kill_player(player)
-                continue
+        return max(0.045, 0.42 - (self.speed - 1) * 0.026)
 
-        if len(new_heads) == 2 and new_heads[0][1] == new_heads[1][1]:
-            self._kill_player(1)
-            self._kill_player(2)
-        
-        # Move alive snakes
-        if self.alive1:
-            new_head1 = self.snake1[0] + self.direction1
-            self.snake1.insert(0, new_head1)
-            
-            # Check if snake1 ate food
-            if new_head1 == self.food:
-                self.score1 += 10
-                self._generate_food()
-            else:
-                self.snake1.pop()
-        
-        if self.alive2:
-            new_head2 = self.snake2[0] + self.direction2
-            self.snake2.insert(0, new_head2)
-            
-            # Check if snake2 ate food
-            if new_head2 == self.food:
-                self.score2 += 10
-                self._generate_food()
-            else:
-                self.snake2.pop()
-        
-        # Check if game is over (both snakes dead)
-        if not self.alive1 and not self.alive2:
-            self.game_over = True
-    
-    def _update_display(self) -> None:
-        """
-        Update the visual display of the game board
-        
-        Creates a 2D grid representation and renders the snake(s), food,
-        score, and game status messages. Uses horizontal spacing to match
-        vertical line spacing for better visual consistency.
-        """
-        # Create empty game board
-        board = [[' ' for _ in range(self.width)] for _ in range(self.height)]
-        
+    def _reset_game_state(self, reset_high_score: bool = False) -> None:
+        """Reset positions, scores, and status flags for a fresh round."""
+
+        if reset_high_score:
+            self.high_score = 0
+
+        self.food = None
+        self.paused = False
+        self.won = False
+        self.game_over = False
+        self.food_eaten = 0
+        self.ticks = 0
+        self.last_message = "Eat food, grow longer, and keep moving."
+
         if self.two_player:
-            # Place dead bodies first (so they can be overwritten by alive snakes)
-            for pos in self.dead_bodies:
-                if 0 <= pos.row < self.height and 0 <= pos.col < self.width:
-                    board[pos.row][pos.col] = '×'  # Dead body symbol
-            
-            # Place snake1 on board (Player 1)
-            if self.alive1:
-                for i, pos in enumerate(self.snake1):
-                    if 0 <= pos.row < self.height and 0 <= pos.col < self.width:
-                        if i == 0:  # Snake head
-                            board[pos.row][pos.col] = '@'
-                        else:  # Snake body
-                            board[pos.row][pos.col] = '#'
-            
-            # Place snake2 on board (Player 2)
-            if self.alive2:
-                for i, pos in enumerate(self.snake2):
-                    if 0 <= pos.row < self.height and 0 <= pos.col < self.width:
-                        if i == 0:  # Snake head
-                            board[pos.row][pos.col] = '&'  # Different head symbol for player 2
-                        else:  # Snake body
-                            board[pos.row][pos.col] = '='  # Different body symbol for player 2
-        else:
-            # Single player mode - place snake on board
-            for i, pos in enumerate(self.snake):
-                if 0 <= pos.row < self.height and 0 <= pos.col < self.width:
-                    if i == 0:  # Snake head
-                        board[pos.row][pos.col] = '@'
-                    else:  # Snake body
-                        board[pos.row][pos.col] = '#'
-        
-        # Place food on board
-        if self.food:
-            board[self.food.row][self.food.col] = '*'
-        
-        # Build display string with borders and UI
-        lines = []
-        
-        if self.two_player:
-            # Show scores for both players
-            status1 = "DEAD" if not self.alive1 else "ALIVE"
-            status2 = "DEAD" if not self.alive2 else "ALIVE"
-            lines.append(
-                f"P1 (@#): {self.score1} ({status1}) | "
-                f"P2 (&=): {self.score2} ({status2}) | "
-                f"Size: {self.width}x{self.height} | Speed: {self.speed}/15"
-            )
-        else:
-            lines.append(
-                f"Score: {self.score} | "
-                f"Size: {self.width}x{self.height} | Speed: {self.speed}/15"
-            )
-        
-        # Add horizontal spacing to match vertical line spacing for better visual consistency
-        # Calculate border width for spaced characters (each cell takes 2 characters: content + space)
-        border_width = self.width * 2
-        lines.append("┌" + "─" * border_width + "┐")  # Top border with box drawing chars
-        
-        # Add game board rows with side borders, with spacing between characters
-        for row in board:
-            # Add space after each character for better visual consistency
-            row_str = " ".join(row) + " "  # Space between chars + trailing space
-            lines.append("│" + row_str + "│")
-        
-        lines.append("└" + "─" * border_width + "┘")  # Bottom border
-        
-        # Add status message based on game state
-        if self.game_over:
-            if self.won:
-                lines.append("YOU WIN! Press R to restart, Q to quit")
-            elif self.two_player:
-                if self.score1 > self.score2:
-                    lines.append("GAME OVER! Player 1 WINS! Press R to restart, Q to quit")
-                elif self.score2 > self.score1:
-                    lines.append("GAME OVER! Player 2 WINS! Press R to restart, Q to quit")
-                else:
-                    lines.append("GAME OVER! TIE GAME! Press R to restart, Q to quit")
-            else:
-                lines.append("GAME OVER! Press R to restart, Q to quit")
-        elif self.paused:
-            lines.append("PAUSED - Press SPACE to resume")
-        else:
-            if self.two_player:
-                lines.append("P1: WASD | P2: Arrows | SPACE: Pause | R: Restart | Q: Quit")
-            else:
-                lines.append("WASD/Arrows: Move | SPACE: Pause | R: Restart | Q: Quit")
-        
-        # Update the display widget
-        self.game_display.update("\n".join(lines))
-    
-    def on_key(self, event: events.Key) -> None:
-        """
-        Handle keyboard input for game controls
-        
-        Processes movement keys (WASD/arrows) and game control keys
-        (space, R, Q). Prevents reverse direction to avoid instant death.
-        In two-player mode: Player 1 uses WASD, Player 2 uses arrow keys.
-        """
-        key = event.key.lower()
-        
-        if self.two_player:
-            # Player 1 controls (WASD) - only if alive
-            if self.alive1:
-                if key == "w" and self.direction1 != Direction.DOWN:
-                    self.direction1 = Direction.UP
-                elif key == "s" and self.direction1 != Direction.UP:
-                    self.direction1 = Direction.DOWN
-                elif key == "a" and self.direction1 != Direction.RIGHT:
-                    self.direction1 = Direction.LEFT
-                elif key == "d" and self.direction1 != Direction.LEFT:
-                    self.direction1 = Direction.RIGHT
-            
-            # Player 2 controls (Arrow keys) - only if alive
-            if self.alive2:
-                if key == "up" and self.direction2 != Direction.DOWN:
-                    self.direction2 = Direction.UP
-                elif key == "down" and self.direction2 != Direction.UP:
-                    self.direction2 = Direction.DOWN
-                elif key == "left" and self.direction2 != Direction.RIGHT:
-                    self.direction2 = Direction.LEFT
-                elif key == "right" and self.direction2 != Direction.LEFT:
-                    self.direction2 = Direction.RIGHT
-        else:
-            # Single player mode - movement keys (prevent moving in opposite direction)
-            if key in ["w", "up"] and self.direction != Direction.DOWN:
-                self.direction = Direction.UP
-            elif key in ["s", "down"] and self.direction != Direction.UP:
-                self.direction = Direction.DOWN
-            elif key in ["a", "left"] and self.direction != Direction.RIGHT:
-                self.direction = Direction.LEFT
-            elif key in ["d", "right"] and self.direction != Direction.LEFT:
-                self.direction = Direction.RIGHT
-        
-        # Game control keys (same for both modes)
-        if key == "space":
-            # Toggle pause (only if game is not over)
-            if not self.game_over:
-                self.paused = not self.paused
-                self._update_display()
-        
-        elif key == "r":
-            # Restart game
-            self._restart_game()
-        
-        elif key == "q":
-            # Quit game
-            self.exit()
-    
-    def _restart_game(self) -> None:
-        """
-        Reset the game to initial state
-        
-        Resets snake position(s), direction(s), score(s), and game flags.
-        Generates new food and updates display.
-        """
-        if self.two_player:
-            # Reset both snakes
             self.direction1 = Direction.RIGHT
             self.direction2 = Direction.LEFT
+            self.next_direction1 = self.direction1
+            self.next_direction2 = self.direction2
             self.snake1 = self._build_starting_snake(
                 Position(self.height // 2, self.width // 4),
                 self.direction1,
@@ -564,24 +292,444 @@ class SnakeGame(App):
             self.alive2 = True
             self.score1 = 0
             self.score2 = 0
-            self.dead_bodies = []
+            self.dead_bodies: list[Position] = []
         else:
-            # Single player mode
-            self.direction = Direction.RIGHT  # Reset direction
+            self.direction = Direction.RIGHT
+            self.next_direction = self.direction
             self.snake = self._build_starting_snake(
                 Position(self.height // 2, self.width // 2),
                 self.direction,
             )
-            self.score = 0  # Reset score
-        
-        self.game_over = False  # Clear game over flag
-        self.paused = False  # Clear pause flag
-        self.won = False
-        self._generate_food()  # Generate new food
-        self._update_display()  # Update display
+            self.score = 0
+
+        self._generate_food()
+
+    def _build_starting_snake(
+        self,
+        head: Position,
+        direction: Direction,
+        length: int = STARTING_LENGTH,
+    ) -> list[Position]:
+        """Build a starting snake body behind the head."""
+
+        dr, dc = direction.value
+        return [
+            Position(head.row - dr * offset, head.col - dc * offset)
+            for offset in range(length)
+        ]
+
+    def _occupied_positions(self) -> set[Position]:
+        """Return every board position currently occupied by snake bodies."""
+
+        if self.two_player:
+            return set(self.snake1) | set(self.snake2) | set(self.dead_bodies)
+        return set(self.snake)
+
+    def _generate_food(self) -> None:
+        """Generate food at a random empty position on the board."""
+
+        occupied_positions = self._occupied_positions()
+        open_positions = [
+            Position(row, col)
+            for row in range(self.height)
+            for col in range(self.width)
+            if Position(row, col) not in occupied_positions
+        ]
+
+        if not open_positions:
+            self.food = None
+            self._finish_game("Board cleared. Perfect run.", won=True)
+            return
+
+        self.food = random.choice(open_positions)
+
+    def _game_loop(self) -> None:
+        """Advance the game by one tick."""
+
+        if self.game_over or self.paused:
+            return
+
+        self.ticks += 1
+        if self.two_player:
+            self._update_two_player()
+        else:
+            self._update_single_player()
+
+        self._update_display()
+
+    def _update_single_player(self) -> None:
+        """Update logic for single-player mode."""
+
+        self.direction = self.next_direction
+        new_head = self.snake[0] + self.direction
+
+        if self._is_out_of_bounds(new_head):
+            self._finish_game("Wall hit. Press R for a clean restart.")
+            return
+
+        will_grow = new_head == self.food
+        body_to_check = self.snake if will_grow else self.snake[:-1]
+        if new_head in body_to_check:
+            self._finish_game("Tail collision. Press R and try a wider turn.")
+            return
+
+        self.snake.insert(0, new_head)
+
+        if will_grow:
+            self.score += POINTS_PER_FOOD
+            self.high_score = max(self.high_score, self.score)
+            self.food_eaten += 1
+            self.last_message = f"Snack collected. +{POINTS_PER_FOOD} points."
+            self._generate_food()
+        else:
+            self.snake.pop()
+
+    def _is_out_of_bounds(self, position: Position) -> bool:
+        """Return whether a position is outside the game board."""
+
+        return (
+            position.row < 0
+            or position.row >= self.height
+            or position.col < 0
+            or position.col >= self.width
+        )
+
+    def _finish_game(self, message: str, won: bool = False) -> None:
+        """Set a final game state and message."""
+
+        self.won = won
+        self.game_over = True
+        self.last_message = message
+
+    def _kill_player(self, player: int) -> None:
+        """Mark a two-player snake as dead and leave its body on the board."""
+
+        if player == 1 and self.alive1:
+            self.alive1 = False
+            self.dead_bodies.extend(self.snake1)
+        elif player == 2 and self.alive2:
+            self.alive2 = False
+            self.dead_bodies.extend(self.snake2)
+
+    def _update_two_player(self) -> None:
+        """Update logic for two-player mode with simultaneous planning."""
+
+        if self.alive1:
+            self.direction1 = self.next_direction1
+        if self.alive2:
+            self.direction2 = self.next_direction2
+
+        planned_heads: dict[int, Position] = {}
+        if self.alive1:
+            planned_heads[1] = self.snake1[0] + self.direction1
+        if self.alive2:
+            planned_heads[2] = self.snake2[0] + self.direction2
+
+        dead_players: set[int] = set()
+        for player, new_head in planned_heads.items():
+            if self._is_out_of_bounds(new_head):
+                dead_players.add(player)
+                continue
+
+            current_snake = self.snake1 if player == 1 else self.snake2
+            other_snake = self.snake2 if player == 1 else self.snake1
+            will_grow = new_head == self.food
+            own_body = current_snake if will_grow else current_snake[:-1]
+
+            if (
+                new_head in own_body
+                or new_head in other_snake
+                or new_head in self.dead_bodies
+            ):
+                dead_players.add(player)
+
+        if (
+            len(planned_heads) == 2
+            and planned_heads[1] == planned_heads[2]
+        ):
+            dead_players.update({1, 2})
+
+        for player in sorted(dead_players):
+            self._kill_player(player)
+
+        original_food = self.food
+        food_claims: list[int] = []
+        for player in (1, 2):
+            if player not in planned_heads:
+                continue
+            if player == 1 and self.alive1:
+                self.snake1.insert(0, planned_heads[player])
+                if planned_heads[player] == original_food:
+                    self.score1 += POINTS_PER_FOOD
+                    food_claims.append(player)
+                else:
+                    self.snake1.pop()
+            elif player == 2 and self.alive2:
+                self.snake2.insert(0, planned_heads[player])
+                if planned_heads[player] == original_food:
+                    self.score2 += POINTS_PER_FOOD
+                    food_claims.append(player)
+                else:
+                    self.snake2.pop()
+
+        if food_claims:
+            self.food_eaten += len(food_claims)
+            self.high_score = max(self.high_score, self.score1, self.score2)
+            players = " and ".join(f"P{player}" for player in food_claims)
+            self.last_message = f"{players} scored. +{POINTS_PER_FOOD}."
+            self._generate_food()
+        elif dead_players:
+            fallen = " and ".join(f"P{player}" for player in sorted(dead_players))
+            self.last_message = f"{fallen} crashed."
+
+        if not self.alive1 and not self.alive2:
+            if self.score1 > self.score2:
+                self._finish_game("Game over. Player 1 wins.")
+            elif self.score2 > self.score1:
+                self._finish_game("Game over. Player 2 wins.")
+            else:
+                self._finish_game("Game over. Tie game.")
+
+    def _board_cells(self) -> list[list[str]]:
+        """Return a symbolic board representation used by the renderer."""
+
+        board = [
+            [CELL_EMPTY for _ in range(self.width)]
+            for _ in range(self.height)
+        ]
+
+        if self.food:
+            board[self.food.row][self.food.col] = CELL_FOOD
+
+        if self.two_player:
+            for pos in self.dead_bodies:
+                if 0 <= pos.row < self.height and 0 <= pos.col < self.width:
+                    board[pos.row][pos.col] = CELL_DEAD
+
+            if self.alive1:
+                self._draw_snake(board, self.snake1, CELL_HEAD_1, CELL_BODY_1)
+            if self.alive2:
+                self._draw_snake(board, self.snake2, CELL_HEAD_2, CELL_BODY_2)
+        else:
+            self._draw_snake(board, self.snake, CELL_HEAD_1, CELL_BODY_1)
+
+        return board
+
+    def _draw_snake(
+        self,
+        board: list[list[str]],
+        snake: list[Position],
+        head_cell: str,
+        body_cell: str,
+    ) -> None:
+        """Draw a snake onto the symbolic board."""
+
+        for index, pos in enumerate(snake):
+            if 0 <= pos.row < self.height and 0 <= pos.col < self.width:
+                board[pos.row][pos.col] = head_cell if index == 0 else body_cell
+
+    def _render_board(self) -> Text:
+        """Render the board as styled terminal text."""
+
+        glyphs = ASCII_GLYPHS if self.ascii_only else GLYPHS
+        board_text = Text()
+        for row_index, row in enumerate(self._board_cells()):
+            for cell in row:
+                board_text.append(glyphs[cell], style=CELL_STYLES[cell])
+                board_text.append(" ")
+            if row_index < self.height - 1:
+                board_text.append("\n")
+        return board_text
+
+    def _state_label(self) -> Text:
+        """Return a concise state label for the board panel."""
+
+        if self.game_over:
+            if self.won:
+                return Text("CLEARED", style="bold #7dff9b")
+            return Text("GAME OVER", style="bold #ff6b6b")
+        if self.paused:
+            return Text("PAUSED", style="bold #ffcc66")
+        return Text("LIVE", style="bold #7dff9b")
+
+    def _score_table(self) -> Table:
+        """Build a compact score and run metadata table."""
+
+        table = Table.grid(padding=(0, 2))
+        table.add_column(justify="left")
+        table.add_column(justify="right")
+        table.add_column(justify="right")
+        table.add_column(justify="right")
+
+        if self.two_player:
+            p1_state = "alive" if self.alive1 else "out"
+            p2_state = "alive" if self.alive2 else "out"
+            table.add_row(
+                Text(f"P1 {self.score1} ({p1_state})", style="#7dff9b"),
+                Text(f"P2 {self.score2} ({p2_state})", style="#7cc7ff"),
+                Text(f"best {self.high_score}", style="bold #ffcc66"),
+                Text(f"speed {self.speed}/15", style="dim"),
+            )
+        else:
+            table.add_row(
+                Text(f"score {self.score}", style="bold #7dff9b"),
+                Text(f"best {self.high_score}", style="bold #ffcc66"),
+                Text(f"food {self.food_eaten}", style="dim"),
+                Text(f"speed {self.speed}/15", style="dim"),
+            )
+
+        return table
+
+    def _render_controls(self) -> Text:
+        """Return mode-specific control help."""
+
+        if self.two_player:
+            controls = "P1 WASD  P2 arrows  Space pause  R restart  Q quit"
+        else:
+            controls = "WASD or arrows move  Space pause  R restart  Q quit"
+        return Text(controls, style="dim")
+
+    def _render_message(self) -> Text:
+        """Return the current game message with state-aware styling."""
+
+        style = "bold #ff6b6b" if self.game_over and not self.won else "#dbffe9"
+        if self.paused:
+            style = "bold #ffcc66"
+        if self.won:
+            style = "bold #7dff9b"
+        return Text(self.last_message, style=style)
+
+    def _render_game(self) -> Align:
+        """Build the full Rich renderable displayed inside Textual."""
+
+        heading = Text()
+        heading.append("uvpy.run Snake", style="bold #7dff9b")
+        heading.append("  ")
+        heading.append(
+            "two-player" if self.two_player else "single-player",
+            style="dim",
+        )
+
+        board_panel = Panel.fit(
+            self._render_board(),
+            title=self._state_label(),
+            subtitle=f"{self.width}x{self.height}",
+            border_style="#38d878" if not self.game_over else "#ff6b6b",
+            box=box.SQUARE,
+            padding=(0, 1),
+        )
+
+        content = Group(
+            Align.center(heading),
+            self._score_table(),
+            board_panel,
+            Align.center(self._render_message()),
+            Align.center(self._render_controls()),
+        )
+        return Align.center(content, vertical="middle")
+
+    def _update_display(self) -> None:
+        """Update the display widget when the Textual app is mounted."""
+
+        if self.game_display is not None:
+            self.game_display.update(self._render_game())
+
+    def _queue_direction(self, direction: Direction, player: int | None = None) -> bool:
+        """Queue one legal direction change for the next game tick."""
+
+        if self.game_over:
+            return False
+
+        if player == 1:
+            current_direction = self.direction1
+            if direction == OPPOSITE_DIRECTIONS[current_direction]:
+                return False
+            self.next_direction1 = direction
+            return True
+
+        if player == 2:
+            current_direction = self.direction2
+            if direction == OPPOSITE_DIRECTIONS[current_direction]:
+                return False
+            self.next_direction2 = direction
+            return True
+
+        current_direction = self.direction
+        if direction == OPPOSITE_DIRECTIONS[current_direction]:
+            return False
+        self.next_direction = direction
+        return True
+
+    def on_key(self, event: events.Key) -> None:
+        """Handle movement keys; global actions are handled by Textual bindings."""
+
+        key = event.key.lower()
+        handled = False
+
+        if self.two_player:
+            if self.alive1:
+                if key == "w":
+                    handled = self._queue_direction(Direction.UP, player=1)
+                elif key == "s":
+                    handled = self._queue_direction(Direction.DOWN, player=1)
+                elif key == "a":
+                    handled = self._queue_direction(Direction.LEFT, player=1)
+                elif key == "d":
+                    handled = self._queue_direction(Direction.RIGHT, player=1)
+
+            if self.alive2:
+                if key == "up":
+                    handled = self._queue_direction(Direction.UP, player=2)
+                elif key == "down":
+                    handled = self._queue_direction(Direction.DOWN, player=2)
+                elif key == "left":
+                    handled = self._queue_direction(Direction.LEFT, player=2)
+                elif key == "right":
+                    handled = self._queue_direction(Direction.RIGHT, player=2)
+        else:
+            movement_keys = {
+                "w": Direction.UP,
+                "up": Direction.UP,
+                "s": Direction.DOWN,
+                "down": Direction.DOWN,
+                "a": Direction.LEFT,
+                "left": Direction.LEFT,
+                "d": Direction.RIGHT,
+                "right": Direction.RIGHT,
+            }
+            if key in movement_keys:
+                handled = self._queue_direction(movement_keys[key])
+
+        if handled:
+            event.stop()
+
+    def action_toggle_pause(self) -> None:
+        """Pause or resume the game."""
+
+        if self.game_over:
+            return
+        self.paused = not self.paused
+        self.last_message = (
+            "Paused. Breathe, then press Space."
+            if self.paused
+            else "Back in motion."
+        )
+        self._update_display()
+
+    def action_restart(self) -> None:
+        """Restart the current mode while preserving high score."""
+
+        self._reset_game_state(reset_high_score=False)
+        self.last_message = "Fresh board. Good luck."
+        self._update_display()
+
+    def _restart_game(self) -> None:
+        """Backward-compatible restart helper for tests and direct calls."""
+
+        self.action_restart()
 
 
-@click.command(help="Run a polished terminal Snake game.")
+@click.command(help="Run a polished Textual Snake game in your terminal.")
 @click.option(
     "--width",
     "-w",
@@ -610,24 +758,31 @@ class SnakeGame(App):
     "--two-player",
     "-2",
     is_flag=True,
-    help="Enable two-player mode.",
+    help="Enable local two-player mode.",
 )
-def main(width: int, height: int, speed: int, two_player: bool) -> None:
+@click.option(
+    "--ascii",
+    "ascii_only",
+    is_flag=True,
+    help="Use ASCII-safe board glyphs for older terminals.",
+)
+def main(
+    width: int,
+    height: int,
+    speed: int,
+    two_player: bool,
+    ascii_only: bool,
+) -> None:
     """
-    Classic Snake Game in terminal.
-    
-    Controls:
-    - WASD or Arrow Keys: Move the snake
-    - SPACE: Pause/Resume
-    - R: Restart game
-    - Q: Quit
-    
-    Goal: Eat the food (*) to grow and increase score.
-    Avoid hitting walls or yourself!
+    Classic Snake in the terminal.
+
+    Eat food to grow and score points. Avoid the walls, your own tail, and the
+    other player in two-player mode.
     """
-    app = SnakeGame(width, height, speed, two_player)
+
+    app = SnakeGame(width, height, speed, two_player, ascii_only)
     app.run()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -218,6 +218,7 @@ class ToolRiskCoherenceTests(unittest.TestCase):
             tool.Position(1, 2),
         ]
         game.direction = tool.Direction.UP
+        game.next_direction = tool.Direction.UP
         game.food = tool.Position(7, 7)
 
         game._update_single_player()
@@ -225,6 +226,42 @@ class ToolRiskCoherenceTests(unittest.TestCase):
         self.assertFalse(game.game_over)
         self.assertEqual(game.snake[0], tool.Position(1, 2))
         self.assertEqual(len(game.snake), 4)
+
+    def test_snake_queues_only_one_safe_turn_per_tick(self):
+        tool = load_tool_module("snake.py")
+        game = tool.SnakeGame(width=10, height=8, speed=1)
+
+        self.assertTrue(game._queue_direction(tool.Direction.UP))
+        self.assertFalse(game._queue_direction(tool.Direction.LEFT))
+
+        self.assertEqual(game.direction, tool.Direction.RIGHT)
+        self.assertEqual(game.next_direction, tool.Direction.UP)
+
+        game.food = tool.Position(7, 7)
+        game._update_single_player()
+
+        self.assertEqual(game.direction, tool.Direction.UP)
+        self.assertEqual(game.snake[0], tool.Position(3, 5))
+
+    def test_snake_updates_score_high_score_and_food_count(self):
+        tool = load_tool_module("snake.py")
+        game = tool.SnakeGame(width=10, height=8, speed=1)
+        game.snake = [
+            tool.Position(2, 2),
+            tool.Position(2, 1),
+            tool.Position(2, 0),
+        ]
+        game.direction = tool.Direction.RIGHT
+        game.next_direction = tool.Direction.RIGHT
+        game.food = tool.Position(2, 3)
+
+        game._update_single_player()
+
+        self.assertEqual(game.score, tool.POINTS_PER_FOOD)
+        self.assertEqual(game.high_score, tool.POINTS_PER_FOOD)
+        self.assertEqual(game.food_eaten, 1)
+        self.assertEqual(len(game.snake), tool.STARTING_LENGTH + 1)
+        self.assertIn("Snack collected", game.last_message)
 
     def test_image_tools_return_nonzero_when_processing_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
