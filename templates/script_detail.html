@@ -11,8 +11,6 @@
         />
         <meta name="author" content="uvpy.run" />
         <meta name="robots" content="index, follow" />
-
-        <!-- Open Graph / Facebook -->
         <meta property="og:type" content="article" />
         <meta property="og:url" content="{{ request.url }}" />
         <meta
@@ -23,8 +21,6 @@
             property="og:description"
             content="{{ script_info.description }}"
         />
-
-        <!-- Twitter -->
         <meta property="twitter:card" content="summary" />
         <meta property="twitter:url" content="{{ request.url }}" />
         <meta
@@ -35,579 +31,903 @@
             property="twitter:description"
             content="{{ script_info.description }}"
         />
-
-        <!-- Canonical URL -->
         <link rel="canonical" href="{{ request.url }}" />
-
-        <!-- Favicon -->
         <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
         <link rel="icon" type="image/x-icon" href="/static/favicon.svg" />
 
         <style>
-            body {
-                font-family:
-                    "MS PGothic", "Hiragino Kaku Gothic Pro", "Meiryo",
+            :root {
+                --ink: #211d18;
+                --text-soft: #3f3a33;
+                --muted: #6d655b;
+                --paper: #f8f3e8;
+                --surface: #fffdf8;
+                --surface-muted: #f3ecde;
+                --line: #d8cdbb;
+                --line-strong: #29241d;
+                --navy: #123765;
+                --teal: #0b665d;
+                --amber: #f1c75b;
+                --amber-soft: #fff5cf;
+                --green: #15803d;
+                --code: #111923;
+                --code-text: #f7efe3;
+                --display-font: Georgia, "Times New Roman", Times, serif;
+                --mono-font: "SF Mono", Monaco, Menlo, Consolas, "Liberation Mono",
                     monospace;
-                background-color: #f0f0f0;
+                --radius: 2px;
+                --hard-shadow: 4px 4px 0 rgba(41, 36, 29, 0.15);
+                --button-shadow: 3px 3px 0 var(--line-strong);
+                --shadow: 0 16px 34px rgba(41, 36, 29, 0.08);
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
                 margin: 0;
-                padding: 20px;
-                color: #333;
+                background:
+                    linear-gradient(rgba(41, 36, 29, 0.026) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(41, 36, 29, 0.026) 1px, transparent 1px),
+                    var(--paper);
+                background-size: 28px 28px;
+                color: var(--ink);
+                font-family:
+                    Inter, ui-sans-serif, system-ui, -apple-system,
+                    BlinkMacSystemFont, "Segoe UI", sans-serif;
+                font-size: 15px;
                 line-height: 1.6;
-                font-size: 14px;
+                letter-spacing: 0;
+                -webkit-font-smoothing: antialiased;
+                text-rendering: optimizeLegibility;
             }
 
-            main {
-                max-width: 950px;
+            a {
+                color: var(--navy);
+                text-decoration-thickness: 1px;
+                text-underline-offset: 3px;
+            }
+
+            a:hover {
+                color: #0c2f59;
+            }
+
+            :focus-visible {
+                outline: 2px solid var(--amber);
+                outline-offset: 3px;
+            }
+
+            .site-shell {
+                max-width: 1180px;
                 margin: 0 auto;
-                background-color: #ffffff;
-                border: 2px solid #000000;
-                padding: 0;
+                padding: 22px;
             }
 
-            header {
-                background-color: #000080;
-                color: #ffffff;
-                padding: 15px;
-                text-align: center;
-                border-bottom: 2px solid #000000;
+            .topbar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+                margin-bottom: 18px;
             }
 
-            header h1 {
-                font-size: 24px;
-                font-weight: bold;
-                margin: 0 0 8px 0;
-                text-transform: uppercase;
-                letter-spacing: 1px;
+            .brand {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                color: var(--ink);
+                font-family: var(--display-font);
+                font-size: 18px;
+                text-decoration: none;
+                font-weight: 800;
             }
 
-            header p {
-                font-size: 13px;
-                margin: 0;
-            }
-
-            header code {
-                background-color: #ffff00;
-                color: #000000;
-                padding: 2px 4px;
-                font-family: "Courier New", monospace;
-                font-size: 12px;
-            }
-
-            .content {
-                padding: 20px;
+            .brand img {
+                width: 30px;
+                height: 30px;
             }
 
             .back-link {
-                display: inline-block;
-                padding: 5px 12px;
-                margin-bottom: 15px;
-                font-size: 12px;
+                display: inline-flex;
+                align-items: center;
+                min-height: 36px;
+                padding: 0 12px;
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius);
+                background: var(--surface);
+                color: var(--ink);
                 text-decoration: none;
-                border: 1px solid #808080;
-                background-color: #e0e0e0;
-                color: #000000;
+                font-size: 13px;
+                font-weight: 700;
+                box-shadow: var(--button-shadow);
+                transition:
+                    background-color 120ms ease,
+                    box-shadow 120ms ease,
+                    transform 120ms ease;
             }
 
             .back-link:hover {
-                background-color: #d0d0d0;
+                background: var(--surface-muted);
             }
 
-            .script-title {
-                background-color: #000080;
+            .back-link:active {
+                box-shadow: 0 0 0 var(--line-strong);
+                transform: translate(3px, 3px);
+            }
+
+            .detail-hero {
+                overflow: hidden;
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius);
+                background: linear-gradient(180deg, #fffdfa 0%, var(--surface) 100%);
+                box-shadow: var(--hard-shadow), var(--shadow);
+                padding: 30px;
+                margin-bottom: 22px;
+            }
+
+            .eyebrow {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 16px;
+            }
+
+            .badge {
+                display: inline-flex;
+                align-items: center;
+                min-height: 26px;
+                padding: 0 9px;
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius);
+                background: var(--surface-muted);
+                color: var(--ink);
+                font-family: var(--mono-font);
+                font-size: 12px;
+                font-weight: 700;
+            }
+
+            .badge.accent {
+                background: var(--amber);
+            }
+
+            h1 {
+                max-width: 900px;
+                margin: 0;
+                font-family: var(--display-font);
+                font-size: 52px;
+                font-weight: 700;
+                line-height: 1.04;
+                letter-spacing: 0;
+            }
+
+            .hero-description {
+                max-width: 760px;
+                margin: 16px 0 0;
+                color: var(--text-soft);
+                font-size: 17px;
+                line-height: 1.6;
+            }
+
+            .layout {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) 320px;
+                gap: 22px;
+                align-items: start;
+            }
+
+            .main-column,
+            .side-column {
+                display: grid;
+                gap: 18px;
+                min-width: 0;
+            }
+
+            .side-column {
+                position: sticky;
+                top: 18px;
+            }
+
+            .panel {
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius);
+                background: var(--surface);
+                box-shadow: var(--hard-shadow);
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            .panel-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                min-height: 44px;
+                padding: 10px 14px;
+                border-bottom: 1px solid var(--line-strong);
+                background: linear-gradient(180deg, #f0e8d9 0%, #e9deca 100%);
+                font-family: var(--mono-font);
+                font-size: 12px;
+                font-weight: 800;
+                text-transform: uppercase;
+            }
+
+            .panel-body {
+                padding: 18px;
+            }
+
+            .command-row {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) auto;
+                gap: 10px;
+                align-items: stretch;
+            }
+
+            .command,
+            .example-command,
+            .source-preview {
+                margin: 0;
+                width: 100%;
+                min-width: 0;
+                overflow: auto;
+                border: 1px solid #263241;
+                border-radius: var(--radius);
+                background: var(--code);
+                color: var(--code-text);
+                font-family: var(--mono-font);
+                font-size: 13px;
+                line-height: 1.55;
+            }
+
+            .command {
+                display: flex;
+                align-items: center;
+                min-height: 48px;
+                padding: 0 14px;
+                white-space: nowrap;
+            }
+
+            .copy-button,
+            .action-button {
+                min-height: 42px;
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius);
+                background: var(--navy);
+                box-shadow: var(--button-shadow);
                 color: #ffffff;
-                padding: 12px 20px;
-                margin: 0 -20px 20px -20px;
-                font-size: 18px;
-                font-weight: bold;
-            }
-
-            .script-meta {
-                border: 1px solid #808080;
-                background-color: #f8f8f8;
-                margin-bottom: 20px;
-            }
-
-            .meta-header {
-                background-color: #c0c0c0;
-                padding: 8px 12px;
-                border-bottom: 1px dotted #808080;
-                font-weight: bold;
-                font-size: 14px;
-            }
-
-            .meta-body {
-                padding: 12px;
-            }
-
-            .meta-row {
-                margin-bottom: 6px;
+                cursor: pointer;
+                font: inherit;
                 font-size: 13px;
-            }
-
-            .meta-label {
-                font-weight: bold;
-                display: inline-block;
-                width: 90px;
-            }
-
-            .meta-value {
-                color: #000080;
-            }
-
-            .section {
-                border: 1px solid #808080;
-                background-color: #f8f8f8;
-                margin-bottom: 20px;
-            }
-
-            .section-header {
-                background-color: #c0c0c0;
-                padding: 8px 12px;
-                border-bottom: 1px dotted #808080;
-                font-weight: bold;
-                font-size: 14px;
-            }
-
-            .section-body {
-                padding: 12px;
-                font-size: 13px;
-            }
-
-            .command-box {
-                background-color: #f5f5f5;
-                color: #1a1a1a;
-                padding: 18px 50px 18px 18px;
-                border: 1px solid #d0d0d0;
-                font-family:
-                    "SF Mono", "Monaco", "Menlo", "Courier New", monospace;
-                font-size: 14px;
-                margin: 18px 0;
-                position: relative;
-                border-radius: 4px;
-                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                font-weight: 800;
+                text-decoration: none;
+                text-align: center;
+                transition:
+                    background-color 120ms ease,
+                    box-shadow 120ms ease,
+                    transform 120ms ease;
             }
 
             .copy-button {
-                position: absolute;
-                top: 50%;
-                right: 10px;
-                transform: translateY(-50%);
-                padding: 5px 10px;
-                font-size: 10px;
-                background-color: #c0c0c0;
-                color: #000000;
-                border: 1px solid #808080;
-                cursor: pointer;
-                font-weight: bold;
+                min-width: 88px;
+                padding: 0 14px;
             }
 
-            .copy-button:hover {
-                background-color: #d0d0d0;
+            .copy-button:hover,
+            .action-button:hover {
+                background: #0c2f59;
             }
 
-            .copy-button:active {
-                background-color: #a0a0a0;
+            .copy-button.copied {
+                background: var(--green);
             }
 
-            .action-buttons {
-                display: flex;
-                gap: 12px;
-                justify-content: center;
-                margin-top: 18px;
+            .copy-button:active,
+            .action-button:active {
+                box-shadow: 0 0 0 var(--line-strong);
+                transform: translate(3px, 3px);
+            }
+
+            .action-row {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+                margin-top: 12px;
             }
 
             .action-button {
-                display: inline-block;
-                padding: 10px 24px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0 12px;
+            }
+
+            .action-button.secondary-action {
+                background: var(--surface);
+                color: var(--ink);
+            }
+
+            .action-button.secondary-action:hover {
+                background: var(--surface-muted);
+            }
+
+            .helper-note {
+                margin: 12px 0 0;
+                color: var(--muted);
                 font-size: 13px;
-                text-decoration: none;
-                border: 1px solid #808080;
-                background-color: #c0c0c0;
-                color: #000000;
-                font-weight: bold;
-                cursor: pointer;
             }
 
-            .action-button:hover {
-                background-color: #d0d0d0;
+            .overview {
+                margin: 0;
+                white-space: pre-wrap;
+                font-size: 16px;
+                color: var(--text-soft);
             }
 
-            .action-button:active {
-                background-color: #a0a0a0;
+            .doc-section + .doc-section {
+                margin-top: 18px;
+                padding-top: 18px;
+                border-top: 1px solid var(--line);
             }
 
-            .dependencies {
-                margin: 8px 0;
+            .doc-section h3 {
+                margin: 0 0 8px;
+                font-family: var(--display-font);
+                font-size: 16px;
             }
 
-            .dependency {
-                display: inline-block;
-                background-color: #ffff00;
-                color: #000000;
-                padding: 4px 8px;
-                margin: 3px;
-                font-size: 12px;
-                border: 1px solid #808080;
+            .doc-section ul {
+                margin: 0;
+                padding-left: 20px;
+            }
+
+            .doc-section li {
+                margin: 5px 0;
             }
 
             .examples-list {
-                margin: 8px 0;
+                display: grid;
+                gap: 10px;
             }
 
-            .example {
-                background-color: #f5f5f5;
-                color: #1a1a1a;
-                padding: 15px 50px 15px 18px;
-                margin: 12px 0;
-                font-family:
-                    "SF Mono", "Monaco", "Menlo", "Courier New", monospace;
-                font-size: 14px;
-                border: 1px solid #d0d0d0;
-                position: relative;
-                border-radius: 4px;
-                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            .example-item {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) auto;
+                gap: 10px;
+                align-items: stretch;
             }
 
-            .description-section-content {
-                background-color: #ffffff;
-                padding: 25px 30px;
-                border: none;
+            .example-command {
+                padding: 12px 14px;
+                white-space: nowrap;
             }
 
-            .description-text {
-                white-space: pre-wrap;
-                font-size: 14px;
-                line-height: 1.8;
-                color: #2c2c2c;
-                font-family:
-                    -apple-system, BlinkMacSystemFont, "SF Pro Text",
-                    "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-                letter-spacing: 0.02em;
-                word-spacing: 0.05em;
-                max-width: 100%;
-                overflow-wrap: break-word;
-                text-align: justify;
+            .meta-grid {
+                display: grid;
+                gap: 10px;
             }
 
-            .description-text::first-line {
-                font-weight: 500;
-                color: #1a1a1a;
-            }
-
-            .download-section {
-                text-align: center;
-                padding: 20px;
-                background-color: #e0e0e0;
-                border: 1px dotted #808080;
-                margin: 20px 0;
-            }
-
-            .download-button {
-                display: inline-block;
-                padding: 10px 20px;
-                margin: 8px;
-                font-size: 14px;
-                text-decoration: none;
-                border: 2px solid #000080;
-                background-color: #000080;
-                color: #ffffff;
-                font-weight: bold;
-            }
-
-            .download-button:hover {
-                background-color: #000060;
-                border-color: #000060;
-            }
-
-            .stats {
+            .meta-row {
                 display: flex;
-                justify-content: space-around;
-                padding: 15px;
-                background-color: #f0f0f0;
-                border: 1px dotted #808080;
-                margin: 15px 0;
-                font-size: 12px;
+                align-items: baseline;
+                justify-content: space-between;
+                gap: 14px;
+                padding-bottom: 9px;
+                border-bottom: 1px solid var(--line);
             }
 
-            .stat {
+            .meta-row:last-child {
+                padding-bottom: 0;
+                border-bottom: 0;
+            }
+
+            .meta-label {
+                color: var(--muted);
+                font-size: 12px;
+                font-weight: 700;
+                font-family: var(--mono-font);
+                text-transform: uppercase;
+            }
+
+            .meta-value {
+                min-width: 0;
+                text-align: right;
+                font-family: var(--mono-font);
+                font-size: 13px;
+                overflow-wrap: anywhere;
+            }
+
+            .dependency-list {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .dependency {
+                display: inline-flex;
+                align-items: center;
+                min-height: 28px;
+                padding: 0 9px;
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius);
+                background: var(--amber-soft);
+                font-family: var(--mono-font);
+                font-size: 12px;
+                font-weight: 700;
+            }
+
+            .trust-list {
+                margin: 0;
+                padding-left: 18px;
+                color: var(--text-soft);
+                font-size: 14px;
+            }
+
+            .trust-list li + li {
+                margin-top: 8px;
+            }
+
+            .source-preview {
+                max-height: 440px;
+                padding: 14px;
+                box-shadow:
+                    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+                    inset 0 18px 28px rgba(0, 0, 0, 0.1);
+                white-space: pre;
+            }
+
+            .source-footer {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: center;
+                justify-content: space-between;
+                margin-top: 12px;
+                color: var(--muted);
+                font-size: 13px;
+            }
+
+            .footer {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: center;
+                gap: 8px 10px;
+                margin-top: 22px;
+                padding: 18px 0 8px;
+                color: var(--muted);
+                font-size: 13px;
                 text-align: center;
             }
 
-            .stat-number {
-                font-size: 18px;
-                font-weight: bold;
-                color: #000080;
+            .footer strong {
+                color: var(--ink);
             }
 
-            .decoration {
-                text-align: center;
-                font-size: 12px;
-                color: #808080;
-                margin: 15px 0;
+            .footer-copy {
+                display: inline-flex;
+                align-items: center;
+                min-height: 34px;
             }
 
-            @media (max-width: 600px) {
+            .footer-link {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                min-height: 34px;
+                padding: 0 10px;
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius);
+                background: var(--surface);
+                box-shadow: var(--button-shadow);
+                color: var(--ink);
+                font-size: 13px;
+                font-weight: 800;
+                text-decoration: none;
+                transition:
+                    background-color 120ms ease,
+                    box-shadow 120ms ease,
+                    transform 120ms ease;
+            }
+
+            .footer-link:hover {
+                background: var(--surface-muted);
+            }
+
+            .footer-link:active {
+                box-shadow: 0 0 0 var(--line-strong);
+                transform: translate(3px, 3px);
+            }
+
+            .footer-link.primary {
+                background: var(--amber);
+            }
+
+            .footer-link.primary:hover {
+                background: #e8b946;
+            }
+
+            .footer-link-icon {
+                display: block;
+                flex: 0 0 auto;
+                width: 16px;
+                height: 16px;
+            }
+
+            .footer-link-icon.uv-icon {
+                width: 18px;
+                height: 18px;
+            }
+
+            @media (max-width: 860px) {
+                .site-shell {
+                    padding: 14px;
+                }
+
+                .topbar {
+                    align-items: flex-start;
+                    flex-direction: column;
+                }
+
+                .detail-hero {
+                    padding: 22px;
+                }
+
+                h1 {
+                    font-size: 42px;
+                }
+
+                .layout {
+                    grid-template-columns: 1fr;
+                }
+
+                .side-column {
+                    position: static;
+                }
+            }
+
+            @media (max-width: 560px) {
                 body {
-                    padding: 10px;
-                    font-size: 13px;
+                    font-size: 14px;
                 }
 
-                main {
-                    border: 1px solid #000000;
+                h1 {
+                    font-size: 32px;
                 }
 
-                .content {
-                    padding: 15px;
+                .detail-hero {
+                    padding: 18px;
                 }
 
-                .meta-label {
-                    width: 70px;
-                }
-
-                header h1 {
-                    font-size: 20px;
-                }
-
-                .script-title {
+                .hero-description {
                     font-size: 16px;
+                }
+
+                .command-row,
+                .example-item,
+                .action-row {
+                    grid-template-columns: 1fr;
+                }
+
+                .command,
+                .example-command {
+                    white-space: pre-wrap;
+                    overflow-wrap: anywhere;
+                }
+
+                .copy-button,
+                .action-button {
+                    width: 100%;
+                }
+
+                .meta-row {
+                    display: grid;
+                    gap: 2px;
+                }
+
+                .meta-value {
+                    text-align: left;
                 }
             }
         </style>
     </head>
     <body>
-        <main>
-            <header>
-                <div
-                    style="
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 15px;
-                        margin-bottom: 5px;
-                    "
-                >
-                    <img
-                        src="/static/favicon.svg"
-                        alt="uvpy.run logo"
-                        style="width: 32px; height: 32px"
-                    />
-                    <h1>★ uvpy.run ★</h1>
-                    <img
-                        src="/static/favicon.svg"
-                        alt="uvpy.run logo"
-                        style="width: 32px; height: 32px"
-                    />
+        <div class="site-shell">
+            <nav class="topbar" aria-label="Page navigation">
+                <a class="brand" href="/">
+                    <img src="/static/favicon.svg" alt="uvpy.run logo" />
+                    <span>uvpy.run</span>
+                </a>
+                <a href="/" class="back-link">Back to tools</a>
+            </nav>
+
+            <header class="detail-hero">
+                <div class="eyebrow">
+                    <span class="badge accent">{{ script_info.filename }}</span>
+                    <span class="badge">{{ script_info.category }}</span>
+                    <span class="badge">v{{ script_info.version }}</span>
+                    <span class="badge">Python {{ script_info.requires_python }}</span>
                 </div>
-                <p>Script Details - Execute with <code>uv run</code></p>
+                <h1>{{ script_info.title }}</h1>
+                <p class="hero-description">
+                    {{ script_info.overview or script_info.description }}
+                </p>
             </header>
 
-            <div class="content">
-                <a href="/" class="back-link">← Back to Tool List</a>
-
-                <div class="script-title">▼ {{ script_info.filename }}</div>
-
-                <!-- Script Metadata -->
-                <div class="script-meta">
-                    <div class="meta-header">■ SCRIPT INFORMATION</div>
-                    <div class="meta-body">
-                        <div class="meta-row">
-                            <span class="meta-label">File:</span>
-                            <span class="meta-value"
-                                >{{ script_info.filename }}</span
-                            >
+            <div class="layout">
+                <main class="main-column">
+                    <section class="panel" aria-labelledby="quick-run-title">
+                        <div class="panel-header" id="quick-run-title">
+                            Run this script
                         </div>
-                        <div class="meta-row">
-                            <span class="meta-label">Version:</span>
-                            <span class="meta-value"
-                                >{{ script_info.version }}</span
-                            >
-                        </div>
-                        <div class="meta-row">
-                            <span class="meta-label">Category:</span>
-                            <span class="meta-value"
-                                >{{ script_info.category }}</span
-                            >
-                        </div>
-                        <div class="meta-row">
-                            <span class="meta-label">Author:</span>
-                            <span class="meta-value"
-                                >{{ script_info.author }}</span
-                            >
-                        </div>
-                        <div class="meta-row">
-                            <span class="meta-label">Lines:</span>
-                            <span class="meta-value"
-                                >{{ script_info.source_lines }} lines</span
-                            >
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Quick Execute -->
-                <div class="download-section">
-                    <div
-                        style="
-                            margin-bottom: 10px;
-                            font-weight: bold;
-                            font-size: 12px;
-                        "
-                    >
-                        QUICK EXECUTE
-                    </div>
-                    <div class="command-box" style="padding: 15px">
-                        uv run {{ base_url }}/{{ script_info.filename }}
-                    </div>
-                    <div class="action-buttons">
-                        <button
-                            class="action-button"
-                            onclick="copyToClipboard('uv run {{ base_url }}/{{ script_info.filename }}')"
-                        >
-                            [COPY COMMAND]
-                        </button>
-                        <a
-                            href="/{{ script_info.filename }}"
-                            target="_blank"
-                            class="action-button"
-                            >[DOWNLOAD SCRIPT]</a
-                        >
-                    </div>
-                </div>
-
-                <!-- Dependencies Section -->
-                {% if script_info.dependencies %}
-                <div class="section">
-                    <div class="section-header">■ DEPENDENCIES (PEP 723)</div>
-                    <div class="section-body">
-                        <div class="dependencies">
-                            {% for dep in script_info.dependencies %}
-                            <span class="dependency">{{ dep }}</span>
-                            {% endfor %}
-                        </div>
-                        <p
-                            style="
-                                margin-top: 10px;
-                                font-size: 10px;
-                                color: #666;
-                            "
-                        >
-                            Dependencies are automatically managed by UV using
-                            PEP 723 inline script metadata.
-                        </p>
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Description Section -->
-                {% if script_info.full_docstring and script_info.full_docstring
-                != 'N/A' %}
-                <div class="section">
-                    <div class="section-header">■ DESCRIPTION</div>
-                    <div class="section-body" style="padding: 0">
-                        <div class="description-section-content">
-                            <div class="description-text">
-                                {{ script_info.full_docstring }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Usage Examples Section -->
-                {% if script_info.usage_examples %}
-                <div class="section">
-                    <div class="section-header">■ USAGE EXAMPLES</div>
-                    <div class="section-body">
-                        <div class="examples-list">
-                            {% for example in script_info.usage_examples %}
-                            <div class="example">
-                                {{ example }}
+                        <div class="panel-body">
+                            <div class="command-row">
+                                <pre class="command"><code>{{ script_info.run_command }}</code></pre>
                                 <button
                                     class="copy-button"
-                                    onclick="copyToClipboard('{{ example }}')"
+                                    type="button"
+                                    data-copy="{{ script_info.run_command }}"
                                 >
-                                    COPY
+                                    Copy
                                 </button>
+                            </div>
+                            <div class="action-row">
+                                <a
+                                    href="/{{ script_info.filename }}"
+                                    target="_blank"
+                                    class="action-button secondary-action"
+                                    >View source</a
+                                >
+                                <a
+                                    href="/{{ script_info.filename }}"
+                                    download
+                                    class="action-button secondary-action"
+                                    >Download</a
+                                >
+                            </div>
+                            <p class="helper-note">
+                                Review the source and dependencies before running
+                                remote scripts on your machine.
+                            </p>
+                        </div>
+                    </section>
+
+                    {% if script_info.overview or script_info.doc_sections %}
+                    <section class="panel" aria-labelledby="about-title">
+                        <div class="panel-header" id="about-title">
+                            What it does
+                        </div>
+                        <div class="panel-body">
+                            {% if script_info.overview %}
+                            <p class="overview">{{ script_info.overview }}</p>
+                            {% endif %}
+
+                            {% for section in script_info.doc_sections %}
+                            <div class="doc-section">
+                                <h3>{{ section.title }}</h3>
+                                <ul>
+                                    {% for item in section.lines %}
+                                    <li>{{ item }}</li>
+                                    {% endfor %}
+                                </ul>
                             </div>
                             {% endfor %}
                         </div>
-                    </div>
-                </div>
-                {% endif %}
+                    </section>
+                    {% endif %}
 
-                <!-- Statistics -->
-                <div class="stats">
-                    <div class="stat">
-                        <div class="stat-number">
-                            {{ script_info.source_lines }}
+                    {% if script_info.remote_usage_examples %}
+                    <section class="panel" aria-labelledby="examples-title">
+                        <div class="panel-header" id="examples-title">
+                            Copy-ready examples
                         </div>
-                        <div>Lines of Code</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-number">
-                            {{ script_info.dependencies|length }}
+                        <div class="panel-body">
+                            <div class="examples-list">
+                                {% for example in script_info.remote_usage_examples %}
+                                <div class="example-item">
+                                    <pre class="example-command"><code>{{ example }}</code></pre>
+                                    <button
+                                        class="copy-button"
+                                        type="button"
+                                        data-copy="{{ example }}"
+                                    >
+                                        Copy
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            </div>
                         </div>
-                        <div>Dependencies</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-number">
-                            {{ script_info.usage_examples|length }}
-                        </div>
-                        <div>Examples</div>
-                    </div>
-                </div>
+                    </section>
+                    {% endif %}
 
-                <div class="decoration">◆◇◆◇◆ END OF DETAILS ◆◇◆◇◆</div>
+                    <section class="panel" aria-labelledby="source-preview-title">
+                        <div class="panel-header" id="source-preview-title">
+                            Source preview
+                        </div>
+                        <div class="panel-body">
+                            <pre class="source-preview"><code>{{ script_info.source_preview }}</code></pre>
+                            <div class="source-footer">
+                                <span>
+                                    {% if script_info.source_preview_truncated %}
+                                    Showing the first 120 lines.
+                                    {% else %}
+                                    Showing the complete script.
+                                    {% endif %}
+                                </span>
+                                <a href="/{{ script_info.filename }}" target="_blank"
+                                    >Open raw source</a
+                                >
+                            </div>
+                        </div>
+                    </section>
+                </main>
 
-                <!-- Footer -->
-                <div
-                    style="
-                        text-align: center;
-                        padding: 15px;
-                        font-size: 10px;
-                        color: #808080;
-                        border-top: 1px dotted #808080;
-                    "
-                >
-                    <p>
-                        <strong>uvpy.run</strong> - Remote Python Script
-                        Execution Platform
-                    </p>
-                    <p>
-                        Powered by
-                        <a
-                            href="https://github.com/astral-sh/uv"
-                            target="_blank"
-                            >UV</a
-                        >
-                        +
-                        <a
-                            href="https://peps.python.org/pep-0723/"
-                            target="_blank"
-                            >PEP 723</a
-                        >
-                    </p>
-                </div>
+                <aside class="side-column" aria-label="Script metadata">
+                    <section class="panel">
+                        <div class="panel-header">Script facts</div>
+                        <div class="panel-body">
+                            <div class="meta-grid">
+                                <div class="meta-row">
+                                    <span class="meta-label">File</span>
+                                    <span class="meta-value"
+                                        >{{ script_info.filename }}</span
+                                    >
+                                </div>
+                                <div class="meta-row">
+                                    <span class="meta-label">Category</span>
+                                    <span class="meta-value"
+                                        >{{ script_info.category }}</span
+                                    >
+                                </div>
+                                <div class="meta-row">
+                                    <span class="meta-label">Version</span>
+                                    <span class="meta-value"
+                                        >{{ script_info.version }}</span
+                                    >
+                                </div>
+                                <div class="meta-row">
+                                    <span class="meta-label">Python</span>
+                                    <span class="meta-value"
+                                        >{{ script_info.requires_python }}</span
+                                    >
+                                </div>
+                                <div class="meta-row">
+                                    <span class="meta-label">Updated</span>
+                                    <span class="meta-value"
+                                        >{{ script_info.updated_at }}</span
+                                    >
+                                </div>
+                                <div class="meta-row">
+                                    <span class="meta-label">Lines</span>
+                                    <span class="meta-value"
+                                        >{{ script_info.source_lines }}</span
+                                    >
+                                </div>
+                                <div class="meta-row">
+                                    <span class="meta-label">Author</span>
+                                    <span class="meta-value"
+                                        >{{ script_info.author }}</span
+                                    >
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="panel">
+                        <div class="panel-header">Dependencies</div>
+                        <div class="panel-body">
+                            {% if script_info.dependencies %}
+                            <div class="dependency-list">
+                                {% for dep in script_info.dependencies %}
+                                <span class="dependency">{{ dep }}</span>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <p class="helper-note" style="margin: 0">
+                                No third-party packages declared.
+                            </p>
+                            {% endif %}
+                        </div>
+                    </section>
+
+                    <section class="panel">
+                        <div class="panel-header">Run checklist</div>
+                        <div class="panel-body">
+                            <ul class="trust-list">
+                                <li>Check the source preview or raw file.</li>
+                                <li>Review declared dependencies.</li>
+                                <li>Use <code>--help</code> when available.</li>
+                            </ul>
+                        </div>
+                    </section>
+                </aside>
             </div>
-        </main>
+
+            <footer class="footer">
+                <span class="footer-copy">
+                    <strong>uvpy.run</strong>&nbsp;- remote Python scripts powered by
+                </span>
+                <a
+                    class="footer-link"
+                    href="https://github.com/astral-sh/uv"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="uv project on GitHub"
+                >
+                    <img
+                        class="footer-link-icon uv-icon"
+                        src="/static/uv-logo-letter.svg"
+                        alt=""
+                    />
+                    uv
+                </a>
+                <span class="footer-copy">and</span>
+                <a
+                    class="footer-link"
+                    href="https://peps.python.org/pep-0723/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >PEP 723</a>
+                <a
+                    class="footer-link primary"
+                    href="{{ open_source_url }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Open source repository on GitHub"
+                >
+                    <svg
+                        class="footer-link-icon"
+                        viewBox="0 0 16 16"
+                        aria-hidden="true"
+                    >
+                        <path
+                            fill="currentColor"
+                            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+                        />
+                    </svg>
+                    Open source on GitHub
+                </a>
+            </footer>
+        </div>
 
         <script>
-            function copyToClipboard(text) {
-                navigator.clipboard.writeText(text).then(
-                    function () {
-                        console.log("Command copied to clipboard:", text);
-                    },
-                    function (err) {
-                        console.error("Could not copy text: ", err);
-                        const textArea = document.createElement("textarea");
-                        textArea.value = text;
-                        document.body.appendChild(textArea);
-                        textArea.select();
-                        document.execCommand("copy");
-                        document.body.removeChild(textArea);
-                        console.log("Fallback copy method used");
-                    },
-                );
+            function copyText(text, button) {
+                const setCopied = function () {
+                    const originalText = button.textContent;
+                    button.textContent = "Copied";
+                    button.classList.add("copied");
+                    window.setTimeout(function () {
+                        button.textContent = originalText;
+                        button.classList.remove("copied");
+                    }, 1600);
+                };
+
+                const fallbackCopy = function () {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = text;
+                    textArea.setAttribute("readonly", "");
+                    textArea.style.position = "absolute";
+                    textArea.style.left = "-9999px";
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(textArea);
+                    setCopied();
+                };
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(setCopied).catch(fallbackCopy);
+                    return;
+                }
+
+                fallbackCopy();
             }
+
+            document.querySelectorAll("[data-copy]").forEach(function (button) {
+                button.addEventListener("click", function () {
+                    copyText(button.dataset.copy, button);
+                });
+            });
         </script>
     </body>
 </html>

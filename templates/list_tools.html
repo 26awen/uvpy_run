@@ -3,576 +3,1119 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>uvpy.run - Remote Python Scripts with UV and PEP 723</title>
+        <title>uvpy.run - Copy-ready Python tools for uv</title>
         <meta
             name="description"
-            content="uvpy.run - Collection of standalone Python tools that can be executed remotely using UV. Leveraging PEP 723 inline script metadata for dependency management and remote execution."
+            content="uvpy.run is a directory of standalone Python tools that can be reviewed, copied, and run directly with uv."
         />
         <meta
             name="keywords"
-            content="uvpy.run, uv python, PEP 723, remote python scripts, python tools, standalone python, inline dependencies, python package manager, uv run, python automation"
+            content="uvpy.run, uv python, PEP 723, python tools, standalone python, inline dependencies, uv run"
         />
         <meta name="author" content="uvpy.run" />
         <meta name="robots" content="index, follow" />
-
-        <!-- Open Graph / Facebook -->
         <meta property="og:type" content="website" />
         <meta property="og:url" content="{{ request.url }}" />
         <meta
             property="og:title"
-            content="uvpy.run - Remote Python Scripts Collection"
+            content="uvpy.run - Copy-ready Python tools for uv"
         />
         <meta
             property="og:description"
-            content="Execute Python scripts remotely with UV at uvpy.run. PEP 723 compliant tools with inline dependency management."
+            content="Discover small Python tools, review source and dependencies, then run them with uv from a URL."
         />
-
-        <!-- Twitter -->
         <meta property="twitter:card" content="summary" />
         <meta property="twitter:url" content="{{ request.url }}" />
         <meta
             property="twitter:title"
-            content="uvpy.run - Remote Python Scripts"
+            content="uvpy.run - Copy-ready Python tools"
         />
         <meta
             property="twitter:description"
-            content="Collection of standalone Python tools executable via UV with PEP 723 support at uvpy.run."
+            content="Standalone Python tools served as copy-ready uv commands."
         />
-
-        <!-- Canonical URL -->
         <link rel="canonical" href="{{ request.url }}" />
-
-        <!-- Favicon -->
         <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
         <link rel="icon" type="image/x-icon" href="/static/favicon.svg" />
 
-        <!-- JSON-LD Structured Data for SEO -->
         <script type="application/ld+json">
             {
                 "@context": "https://schema.org",
                 "@type": "WebSite",
                 "name": "uvpy.run",
-                "alternateName": "UV Python Run",
-                "description": "Collection of standalone Python tools executable remotely using UV with PEP 723 support",
+                "description": "Standalone Python tools executable with uv from a URL",
                 "url": "{{ base_url }}/",
-                "author": {
-                    "@type": "Organization",
-                    "name": "uvpy.run"
-                },
                 "programmingLanguage": "Python",
-                "applicationCategory": "DeveloperApplication",
-                "operatingSystem": "Cross-platform",
-                "keywords": [
-                    "uvpy.run",
-                    "uv",
-                    "python",
-                    "PEP 723",
-                    "remote execution",
-                    "standalone scripts",
-                    "python tools",
-                    "automation",
-                    "package manager"
-                ]
+                "applicationCategory": "DeveloperApplication"
             }
         </script>
 
         <style>
-            body {
-                font-family:
-                    "MS PGothic", "Hiragino Kaku Gothic Pro", "Meiryo",
+            :root {
+                --ink: #211d18;
+                --text-soft: #3f3a33;
+                --muted: #6d655b;
+                --paper: #f8f3e8;
+                --surface: #fffdf8;
+                --surface-muted: #f3ecde;
+                --line: #d8cdbb;
+                --line-strong: #29241d;
+                --navy: #123765;
+                --amber: #f1c75b;
+                --amber-soft: #fff5cf;
+                --green: #15803d;
+                --danger: #8a4a3a;
+                --danger-bg: #fff6ee;
+                --code: #111923;
+                --code-text: #f7efe3;
+                --display-font: Georgia, "Times New Roman", Times, serif;
+                --mono-font: "SF Mono", Monaco, Menlo, Consolas, "Liberation Mono",
                     monospace;
-                background-color: #f0f0f0;
+                --radius: 2px;
+                --hard-shadow: 4px 4px 0 rgba(41, 36, 29, 0.15);
+                --button-shadow: 3px 3px 0 var(--line-strong);
+                --shadow: 0 16px 34px rgba(41, 36, 29, 0.08);
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
                 margin: 0;
-                padding: 20px;
-                color: #333;
-                line-height: 1.6;
-                font-size: 14px;
-            }
-
-            main {
-                max-width: 900px;
-                margin: 0 auto;
-                background-color: #ffffff;
-                border: 2px solid #000000;
-                padding: 0;
-            }
-
-            header {
-                background-color: #000080;
-                color: #ffffff;
-                padding: 15px;
-                text-align: center;
-                border-bottom: 2px solid #000000;
-            }
-
-            header h1 {
-                font-size: 24px;
-                font-weight: bold;
-                margin: 0 0 8px 0;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-            }
-
-            header p {
-                font-size: 13px;
-                margin: 0;
-            }
-
-            header code {
-                background-color: #ffff00;
-                color: #000000;
-                padding: 2px 4px;
-                font-family: "Courier New", monospace;
-                font-size: 12px;
-            }
-
-            .content {
-                padding: 20px;
-            }
-
-            .tools-grid {
-                margin-bottom: 20px;
-            }
-
-            .tool-card {
-                border: 1px solid #808080;
-                margin-bottom: 15px;
-                background-color: #f8f8f8;
-            }
-
-            .tool-header {
-                background-color: #c0c0c0;
-                padding: 8px 12px;
-                border-bottom: 1px solid #808080;
-                font-weight: bold;
+                background:
+                    linear-gradient(rgba(41, 36, 29, 0.026) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(41, 36, 29, 0.026) 1px, transparent 1px),
+                    var(--paper);
+                background-size: 28px 28px;
+                color: var(--ink);
+                font-family:
+                    Inter, ui-sans-serif, system-ui, -apple-system,
+                    BlinkMacSystemFont, "Segoe UI", sans-serif;
                 font-size: 15px;
+                line-height: 1.6;
+                letter-spacing: 0;
+                -webkit-font-smoothing: antialiased;
+                text-rendering: optimizeLegibility;
             }
 
-            .tool-body {
-                padding: 12px;
+            a {
+                color: var(--navy);
+                text-decoration-thickness: 1px;
+                text-underline-offset: 3px;
             }
 
-            .tool-description {
-                margin-bottom: 12px;
+            a:hover {
+                color: #0c2f59;
+            }
+
+            :focus-visible {
+                outline: 2px solid var(--amber);
+                outline-offset: 3px;
+            }
+
+            .site-shell {
+                max-width: 1180px;
+                margin: 0 auto;
+                padding: 22px;
+            }
+
+            .topbar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+                margin-bottom: 18px;
+            }
+
+            .brand {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                color: var(--ink);
+                font-family: var(--display-font);
+                font-size: 18px;
+                text-decoration: none;
+                font-weight: 800;
+            }
+
+            .brand img {
+                width: 30px;
+                height: 30px;
+            }
+
+            .topbar-note {
+                margin: 0;
+                color: var(--muted);
                 font-size: 13px;
-                color: #444;
+                font-weight: 700;
+                text-align: right;
+            }
+
+            .hero {
+                overflow: hidden;
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius);
+                background: linear-gradient(180deg, #fffdfa 0%, var(--surface) 100%);
+                box-shadow: var(--hard-shadow), var(--shadow);
+                padding: 30px;
+                margin-bottom: 22px;
+            }
+
+            .eyebrow {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 16px;
+            }
+
+            .badge {
+                display: inline-flex;
+                align-items: center;
+                min-height: 26px;
+                padding: 0 9px;
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius);
+                background: var(--surface-muted);
+                color: var(--ink);
+                font-family: var(--mono-font);
+                font-size: 12px;
+                font-weight: 700;
+            }
+
+            .badge.accent {
+                background: var(--amber);
+            }
+
+            h1 {
+                max-width: 920px;
+                margin: 0;
+                font-family: var(--display-font);
+                font-size: 60px;
+                font-weight: 700;
+                line-height: 1.04;
+                letter-spacing: 0;
+            }
+
+            .hero-description {
+                max-width: 780px;
+                margin: 16px 0 0;
+                color: var(--text-soft);
+                font-size: 17px;
                 line-height: 1.6;
             }
 
-            .tool-meta {
-                margin-bottom: 12px;
-                font-size: 12px;
-            }
-
-            .meta-row {
-                margin-bottom: 5px;
-            }
-
-            .meta-label {
-                font-weight: bold;
-                display: inline-block;
-                width: 70px;
-            }
-
-            .meta-value {
-                color: #000080;
-            }
-
-            .tool-links {
-                border-top: 1px dotted #808080;
-                padding-top: 10px;
-            }
-
-            .tool-links a,
-            .tool-links button {
-                display: inline-block;
-                padding: 5px 12px;
-                margin-right: 8px;
-                margin-bottom: 5px;
-                font-size: 12px;
-                text-decoration: none;
-                border: 1px solid #808080;
-                background-color: #e0e0e0;
-                color: #000000;
-                font-family: inherit;
-                cursor: pointer;
-            }
-
-            .tool-links a:hover,
-            .tool-links button:hover {
-                background-color: #d0d0d0;
-            }
-
-            .tool-links a {
-                background-color: #000080;
-                color: #ffffff;
-            }
-
-            .tool-links a:hover {
-                background-color: #000060;
-            }
-
-            .description-section,
-            .usage-section {
-                border: 1px solid #808080;
-                background-color: #f8f8f8;
+            .hero-command {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) auto;
+                gap: 10px;
+                align-items: stretch;
+                max-width: 760px;
                 margin-top: 20px;
             }
 
-            .description-header,
-            .usage-header {
-                background-color: #c0c0c0;
-                padding: 8px 12px;
-                border-bottom: 1px dotted #808080;
-                font-weight: bold;
-                font-size: 14px;
-            }
-
-            .description-body,
-            .usage-body {
-                padding: 12px;
+            .command,
+            .tool-command {
+                margin: 0;
+                width: 100%;
+                min-width: 0;
+                overflow: auto;
+                border: 1px solid #263241;
+                border-radius: var(--radius);
+                background: var(--code);
+                color: var(--code-text);
+                font-family: var(--mono-font);
                 font-size: 13px;
+                line-height: 1.55;
             }
 
-            .description-body p,
-            .usage-body p {
-                margin: 8px 0;
+            .command {
+                display: flex;
+                align-items: center;
+                min-height: 48px;
+                padding: 0 14px;
+                white-space: nowrap;
             }
 
-            .description-body ul {
-                margin: 10px 0;
-                padding-left: 25px;
+            .tool-command {
+                padding: 12px 14px;
+                white-space: nowrap;
             }
 
-            .description-body li {
-                margin: 5px 0;
-                font-size: 12px;
-            }
-
-            .description-body strong,
-            .usage-body strong {
-                font-weight: bold;
-                color: #000080;
-            }
-
-            .description-body a,
-            .usage-body a {
-                color: #000080;
-                text-decoration: underline;
-                font-weight: bold;
-            }
-
-            .description-body a:hover,
-            .usage-body a:hover {
-                color: #000060;
-                background-color: #f0f0f0;
-            }
-
-            .description-body code,
-            .usage-body code {
-                background-color: #ffff00;
-                color: #000000;
-                padding: 2px 4px;
-                font-family: "Courier New", monospace;
-                font-size: 12px;
-            }
-
-            .no-tools {
+            .copy-button,
+            .action-button,
+            .filter-button {
+                min-height: 42px;
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius);
+                background: var(--navy);
+                box-shadow: var(--button-shadow);
+                color: #ffffff;
+                cursor: pointer;
+                font: inherit;
+                font-size: 13px;
+                font-weight: 800;
+                text-decoration: none;
                 text-align: center;
-                padding: 40px;
-                border: 1px solid #808080;
-                background-color: #f8f8f8;
+                transition:
+                    background-color 120ms ease,
+                    box-shadow 120ms ease,
+                    transform 120ms ease;
+            }
+
+            .copy-button {
+                min-width: 88px;
+                padding: 0 14px;
+            }
+
+            .copy-button:hover,
+            .action-button:hover,
+            .filter-button:hover {
+                background: #0c2f59;
+            }
+
+            .copy-button.copied {
+                background: var(--green);
+            }
+
+            .copy-button:active,
+            .action-button:active,
+            .filter-button:active {
+                box-shadow: 0 0 0 var(--line-strong);
+                transform: translate(3px, 3px);
+            }
+
+            .panel {
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius);
+                background: var(--surface);
+                box-shadow: var(--hard-shadow);
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            .panel-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                min-height: 44px;
+                padding: 10px 14px;
+                border-bottom: 1px solid var(--line-strong);
+                background: linear-gradient(180deg, #f0e8d9 0%, #e9deca 100%);
+                font-family: var(--mono-font);
+                font-size: 12px;
+                font-weight: 800;
+                text-transform: uppercase;
+            }
+
+            .panel-body {
+                padding: 18px;
+            }
+
+            .explain-panel {
+                margin-bottom: 22px;
+            }
+
+            .explain-grid {
+                display: grid;
+                grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
+                gap: 18px;
+            }
+
+            .explain-block h2,
+            .explain-block h3 {
+                margin: 0 0 8px;
+                font-family: var(--display-font);
+                letter-spacing: 0;
+            }
+
+            .explain-block h2 {
+                font-size: 24px;
+                line-height: 1.18;
+            }
+
+            .explain-block h3 {
+                font-size: 16px;
+            }
+
+            .explain-block p {
+                margin: 8px 0;
+                color: var(--text-soft);
+            }
+
+            .feature-list {
+                display: grid;
+                gap: 10px;
+                margin: 0;
+                padding: 0;
+                list-style: none;
+            }
+
+            .feature-list li {
+                padding: 10px 12px;
+                border: 1px solid var(--line);
+                border-radius: var(--radius);
+                background: #fffaf0;
+                box-shadow: inset 3px 0 0 rgba(241, 199, 91, 0.9);
+            }
+
+            .feature-list strong {
+                color: var(--navy);
+            }
+
+            .security-note {
+                margin-top: 14px;
+                padding: 12px 12px 12px 14px;
+                border: 1px solid var(--danger);
+                border-radius: var(--radius);
+                background: var(--danger-bg);
+                box-shadow: inset 3px 0 0 rgba(138, 74, 58, 0.85);
+                color: #4a2a22;
                 font-size: 14px;
             }
 
-            hr {
-                border: none;
-                border-top: 1px dotted #808080;
-                margin: 20px 0;
+            .controls {
+                margin-bottom: 22px;
             }
 
-            /* 添加一些复古的装饰元素 */
-            .decoration {
-                text-align: center;
+            .control-grid {
+                display: grid;
+                grid-template-columns: minmax(220px, 1fr) auto;
+                gap: 12px;
+                align-items: center;
+            }
+
+            .search-input {
+                width: 100%;
+                min-height: 44px;
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius);
+                background: var(--surface);
+                color: var(--ink);
+                font: inherit;
+                font-size: 15px;
+                padding: 0 12px;
+            }
+
+            .search-input:focus {
+                outline: 2px solid var(--amber);
+                outline-offset: 3px;
+            }
+
+            .result-count {
+                color: var(--muted);
+                font-family: var(--mono-font);
+                font-size: 13px;
+                font-weight: 700;
+                white-space: nowrap;
+            }
+
+            .filters {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-top: 12px;
+            }
+
+            .filter-button {
+                min-height: 34px;
+                padding: 0 10px;
+                background: var(--surface);
+                color: var(--ink);
+            }
+
+            .filter-button.active {
+                background: var(--amber);
+                color: var(--ink);
+            }
+
+            .tools-grid {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 18px;
+            }
+
+            .tool-card {
+                display: grid;
+                grid-template-rows: auto 1fr auto;
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius);
+                background: var(--surface);
+                box-shadow: var(--hard-shadow);
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            .tool-card[hidden] {
+                display: none;
+            }
+
+            .tool-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 10px 14px;
+                border-bottom: 1px solid var(--line-strong);
+                background: linear-gradient(180deg, #f0e8d9 0%, #e9deca 100%);
+            }
+
+            .tool-filename {
+                font-family: var(--mono-font);
+                font-size: 13px;
+                font-weight: 800;
+                overflow-wrap: anywhere;
+            }
+
+            .tool-category {
+                flex: 0 0 auto;
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius);
+                background: var(--amber-soft);
+                padding: 2px 7px;
+                color: #493600;
+                font-size: 11px;
+                font-weight: 800;
+            }
+
+            .tool-body {
+                padding: 18px;
+            }
+
+            .tool-title {
+                margin: 0;
+                font-family: var(--display-font);
+                font-size: 22px;
+                font-weight: 700;
+                line-height: 1.18;
+                letter-spacing: 0;
+            }
+
+            .tool-description {
+                margin: 10px 0 0;
+                color: var(--text-soft);
+                font-size: 14px;
+                line-height: 1.55;
+            }
+
+            .tool-meta {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 8px 12px;
+                margin-top: 14px;
+                padding-top: 14px;
+                border-top: 1px solid var(--line);
+            }
+
+            .meta-item {
+                min-width: 0;
+            }
+
+            .meta-label {
+                display: block;
+                color: var(--muted);
+                font-family: var(--mono-font);
+                font-size: 11px;
+                font-weight: 800;
+                text-transform: uppercase;
+            }
+
+            .meta-value {
+                display: block;
+                margin-top: 2px;
+                font-family: var(--mono-font);
                 font-size: 12px;
-                color: #808080;
-                margin: 15px 0;
+                overflow-wrap: anywhere;
             }
 
-            @media (max-width: 600px) {
+            .tool-footer {
+                display: grid;
+                gap: 10px;
+                padding: 0 16px 16px;
+            }
+
+            .command-row {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) auto;
+                gap: 10px;
+                align-items: stretch;
+                min-width: 0;
+            }
+
+            .action-row {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .action-button {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0 12px;
+            }
+
+            .action-button.secondary-action {
+                background: var(--surface);
+                color: var(--ink);
+            }
+
+            .action-button.secondary-action:hover {
+                background: var(--surface-muted);
+            }
+
+            .empty-state {
+                display: none;
+                padding: 30px;
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius);
+                background: var(--surface);
+                text-align: center;
+                box-shadow: var(--hard-shadow);
+            }
+
+            .empty-state.visible {
+                display: block;
+            }
+
+            .trust-panel {
+                margin-top: 22px;
+                border-color: var(--danger);
+                background: var(--danger-bg);
+            }
+
+            .trust-panel .panel-header {
+                border-color: var(--danger);
+                background: linear-gradient(180deg, #f6dfd5 0%, #efd1c5 100%);
+                color: #4a2a22;
+            }
+
+            .trust-list {
+                margin: 0;
+                padding-left: 18px;
+                color: #4a2a22;
+                font-size: 14px;
+            }
+
+            .trust-list li + li {
+                margin-top: 6px;
+            }
+
+            .footer {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: center;
+                gap: 8px 10px;
+                margin-top: 22px;
+                padding: 18px 0 8px;
+                color: var(--muted);
+                font-size: 13px;
+                text-align: center;
+            }
+
+            .footer strong {
+                color: var(--ink);
+            }
+
+            .footer-copy {
+                display: inline-flex;
+                align-items: center;
+                min-height: 34px;
+            }
+
+            .footer-link {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                min-height: 34px;
+                padding: 0 10px;
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius);
+                background: var(--surface);
+                box-shadow: var(--button-shadow);
+                color: var(--ink);
+                font-size: 13px;
+                font-weight: 800;
+                text-decoration: none;
+                transition:
+                    background-color 120ms ease,
+                    box-shadow 120ms ease,
+                    transform 120ms ease;
+            }
+
+            .footer-link:hover {
+                background: var(--surface-muted);
+            }
+
+            .footer-link:active {
+                box-shadow: 0 0 0 var(--line-strong);
+                transform: translate(3px, 3px);
+            }
+
+            .footer-link.primary {
+                background: var(--amber);
+            }
+
+            .footer-link.primary:hover {
+                background: #e8b946;
+            }
+
+            .footer-link-icon {
+                display: block;
+                flex: 0 0 auto;
+                width: 16px;
+                height: 16px;
+            }
+
+            .footer-link-icon.uv-icon {
+                width: 18px;
+                height: 18px;
+            }
+
+            @media (max-width: 860px) {
+                .site-shell {
+                    padding: 14px;
+                }
+
+                .topbar {
+                    align-items: flex-start;
+                    flex-direction: column;
+                }
+
+                .topbar-note {
+                    text-align: left;
+                }
+
+                .hero {
+                    padding: 22px;
+                }
+
+                h1 {
+                    font-size: 44px;
+                }
+
+                .explain-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .tools-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            @media (max-width: 560px) {
                 body {
-                    padding: 10px;
-                    font-size: 13px;
+                    font-size: 14px;
                 }
 
-                main {
-                    border: 1px solid #000000;
+                h1 {
+                    font-size: 34px;
                 }
 
-                .content {
-                    padding: 15px;
+                .hero {
+                    padding: 18px;
                 }
 
-                .meta-label {
-                    width: 60px;
+                .hero-description {
+                    font-size: 16px;
                 }
 
-                header h1 {
-                    font-size: 20px;
+                .hero-command,
+                .control-grid,
+                .command-row,
+                .action-row {
+                    grid-template-columns: 1fr;
+                }
+
+                .command,
+                .tool-command {
+                    white-space: pre-wrap;
+                    overflow-wrap: anywhere;
+                }
+
+                .copy-button,
+                .action-button {
+                    width: 100%;
                 }
 
                 .tool-header {
-                    font-size: 14px;
+                    align-items: flex-start;
+                    flex-direction: column;
+                }
+
+                .tool-meta {
+                    grid-template-columns: 1fr;
                 }
             }
         </style>
     </head>
     <body>
-        <main>
-            <header>
-                <div
-                    style="
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 15px;
-                        margin-bottom: 5px;
-                    "
-                >
-                    <img
-                        src="/static/favicon.svg"
-                        alt="uvpy.run - Remote Python script execution platform logo"
-                        style="width: 32px; height: 32px"
-                    />
-                    <h1 style="margin: 0">★ uvpy.run ★</h1>
-                    <img
-                        src="/static/favicon.svg"
-                        alt="uvpy.run - Remote Python script execution platform logo"
-                        style="width: 32px; height: 32px"
-                    />
+        <div class="site-shell">
+            <nav class="topbar" aria-label="Page navigation">
+                <a class="brand" href="/">
+                    <img src="/static/favicon.svg" alt="uvpy.run logo" />
+                    <span>uvpy.run</span>
+                </a>
+                <p class="topbar-note">Review source. Copy command. Run with uv.</p>
+            </nav>
+
+            <header class="hero">
+                <div class="eyebrow">
+                    <span class="badge accent">{{ tools|length }} tools</span>
+                    <span class="badge">{{ categories|length }} categories</span>
+                    <span class="badge">PEP 723</span>
+                    <span class="badge">uv run</span>
                 </div>
-                <p>
-                    Remote Python Scripts Collection - Execute with
-                    <code>uv run</code>
+                <h1>Copy-ready Python tools from a URL.</h1>
+                <p class="hero-description">
+                    Browse small standalone scripts, inspect their metadata and
+                    source, then run the one you trust with uv.
                 </p>
+                <div class="hero-command">
+                    <pre class="command"><code>uv run {{ base_url }}/passwordgen.py --help</code></pre>
+                    <button
+                        class="copy-button"
+                        type="button"
+                        data-copy="uv run {{ base_url }}/passwordgen.py --help"
+                    >
+                        Copy
+                    </button>
+                </div>
             </header>
 
-            <div class="content">
-                <!-- Website Description Section -->
-                <div class="description-section">
-                    <div class="description-header">■ ABOUT UVPY.RUN</div>
-                    <div class="description-body">
-                        <p>
-                            <strong>uvpy.run</strong> hosts a curated collection
-                            of <strong>standalone Python tools</strong> designed
-                            to be executed directly from URLs using
-                            <strong
-                                ><a
-                                    href="https://github.com/astral-sh/uv"
-                                    target="_blank"
-                                    >UV</a
-                                ></strong
-                            >
-                            (Ultra-fast Python package installer and resolver).
-                        </p>
-                        <p>
-                            Thanks to
-                            <strong
-                                ><a
+            <section class="panel explain-panel" aria-labelledby="about-heading">
+                <div class="panel-header">
+                    <span id="about-heading">How uvpy.run works</span>
+                </div>
+                <div class="panel-body">
+                    <div class="explain-grid">
+                        <div class="explain-block">
+                            <h2>Standalone Python tools, served as readable URLs.</h2>
+                            <p>
+                                uvpy.run hosts a curated collection of small
+                                Python scripts that you can inspect in the
+                                browser and run locally with
+                                <strong>uv run</strong>.
+                            </p>
+                            <p>
+                                Each tool is designed to be self-contained:
+                                its Python version and dependencies live in the
+                                file through
+                                <a
                                     href="https://peps.python.org/pep-0723/"
                                     target="_blank"
-                                    >PEP 723</a
-                                ></strong
-                            >
-                            (Inline script metadata), each script contains its
-                            own dependency specifications, making them
-                            completely self-contained and executable without
-                            manual environment setup.
-                        </p>
-                        <p><strong>Why UV + PEP 723?</strong></p>
-                        <ul>
-                            <li>
-                                🚀 <strong>URL-based execution</strong>: Run
-                                Python scripts directly from URLs (downloaded
-                                and executed locally)
-                            </li>
-                            <li>
-                                📦 <strong>Automatic dependencies</strong>: PEP
-                                723 metadata handles package installation
-                            </li>
-                            <li>
-                                ⚡ <strong>Ultra-fast</strong>: UV's Rust-based
-                                implementation for speed
-                            </li>
-                            <li>
-                                🔒 <strong>Isolated environments</strong>: Each
-                                script runs in its own environment
-                            </li>
-                            <li>
-                                🛠️ <strong>Zero setup</strong>: No virtual
-                                environment management needed
-                            </li>
-                        </ul>
-                        <p>
-                            Simply copy any command below and run it in your
-                            terminal - UV will handle everything else!
-                        </p>
-                        <div
-                            style="
-                                border: 1px solid #ff6b6b;
-                                background-color: #ffe6e6;
-                                padding: 8px;
-                                margin: 10px 0;
-                                font-size: 10px;
-                            "
+                                    >PEP 723 inline script metadata</a
+                                >.
+                            </p>
+                            <p>
+                                That means you can copy a command, let uv create
+                                the isolated environment, and avoid managing a
+                                project virtualenv for one-off utilities.
+                            </p>
+                            <div class="security-note">
+                                Running remote scripts carries risk. Review the
+                                source and declared dependencies before running
+                                a tool on your machine.
+                            </div>
+                        </div>
+                        <div class="explain-block">
+                            <h3>Why UV + PEP 723?</h3>
+                            <ul class="feature-list">
+                                <li>
+                                    <strong>URL-based execution:</strong>
+                                    scripts are downloaded and run locally.
+                                </li>
+                                <li>
+                                    <strong>Automatic dependencies:</strong>
+                                    uv reads the script metadata and resolves
+                                    packages for that run.
+                                </li>
+                                <li>
+                                    <strong>Isolated environments:</strong>
+                                    each script can run without polluting your
+                                    project environment.
+                                </li>
+                                <li>
+                                    <strong>Zero setup:</strong>
+                                    no manual virtualenv or requirements file is
+                                    needed for small tools.
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel controls" aria-labelledby="tools-heading">
+                <div class="panel-header">
+                    <span id="tools-heading">Tool directory</span>
+                    <span class="result-count" id="resultCount"
+                        >{{ tools|length }} shown</span
+                    >
+                </div>
+                <div class="panel-body">
+                    <div class="control-grid">
+                        <input
+                            class="search-input"
+                            id="toolSearch"
+                            type="search"
+                            placeholder="Search by name, category, or description"
+                            aria-label="Search tools"
+                        />
+                        <span class="result-count">{{ tools|length }} total</span>
+                    </div>
+                    <div class="filters" aria-label="Category filters">
+                        <button
+                            class="filter-button active"
+                            type="button"
+                            data-category="all"
                         >
-                            <strong>⚠️ SECURITY WARNING:</strong> Running remote
-                            scripts can pose security risks. Please review the
-                            source code of any script before execution. By using
-                            these tools, you acknowledge that you run them at
-                            your own risk and responsibility. The website
-                            maintainer is not liable for any damage or security
-                            issues that may arise from script execution.
-                        </div>
+                            All
+                        </button>
+                        {% for category in categories %}
+                        <button
+                            class="filter-button"
+                            type="button"
+                            data-category="{{ category }}"
+                        >
+                            {{ category }}
+                        </button>
+                        {% endfor %}
                     </div>
                 </div>
+            </section>
 
-                <hr />
-
-                <div class="decoration">◆◇◆◇◆ TOOL COLLECTION ◆◇◆◇◆</div>
-
-                {% if tools %}
-                <div class="tools-grid">
-                    {% for tool in tools %}
-                    <div class="tool-card">
-                        <div class="tool-header">▼ {{ tool.filename }}</div>
-                        <div class="tool-body">
-                            <div class="tool-description">
-                                {{ tool.description }}
-                            </div>
-
-                            <div class="tool-meta">
-                                <div class="meta-row">
-                                    <span class="meta-label">Version:</span>
-                                    <span class="meta-value"
-                                        >{{ tool.version }}</span
-                                    >
-                                </div>
-                                <div class="meta-row">
-                                    <span class="meta-label">Category:</span>
-                                    <span class="meta-value"
-                                        >{{ tool.category }}</span
-                                    >
-                                </div>
-                                <div class="meta-row">
-                                    <span class="meta-label">Author:</span>
-                                    <span class="meta-value"
-                                        >{{ tool.author }}</span
-                                    >
-                                </div>
-                            </div>
-
-                            <div class="tool-links">
-                                <a href="{{ tool.detail_url }}">[DETAILS]</a>
-                                <a href="{{ tool.url }}" target="_blank"
-                                    >[DOWNLOAD]</a
-                                >
-                                <button
-                                    type="button"
-                                    onclick="copyToClipboard('uv run {{ base_url }}/{{ tool.filename[1:] if tool.filename.startswith('/') else tool.filename }}')"
-                                >
-                                    [COPY COMMAND]
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="no-tools">
-                    <p>
-                        ※ No Python tools found in the static_pyfiles directory
-                        ※
-                    </p>
-                </div>
-                {% endif %}
-
-                <hr />
-
-                <div class="usage-section">
-                    <div class="usage-header">■ HOW TO USE THESE TOOLS</div>
-                    <div class="usage-body">
-                        <p>
-                            You can run any of these Python scripts directly
-                            from URLs using uv:
-                        </p>
-                        <p>uv run {{ base_url }}/passwordgen.py</p>
-                        <p>
-                            Each tool includes built-in help - try adding --help
-                            to see available options.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="decoration">◆◇◆◇◆ END OF LIST ◆◇◆◇◆</div>
-
-                <hr />
-
-                <!-- Footer Brand Info -->
-                <div
-                    style="
-                        text-align: center;
-                        padding: 15px;
-                        font-size: 10px;
-                        color: #808080;
-                    "
+            {% if tools %}
+            <section class="tools-grid" id="toolsGrid" aria-label="Tools">
+                {% for tool in tools %}
+                <article
+                    class="tool-card"
+                    data-tool-card
+                    data-category="{{ tool.category }}"
+                    data-search="{{ tool.filename }} {{ tool.title }} {{ tool.description }} {{ tool.category }} {{ tool.author }}"
                 >
-                    <p>
-                        <strong>uvpy.run</strong> - Remote Python Script
-                        Execution Platform
-                    </p>
-                    <p>
-                        Powered by
-                        <a
-                            href="https://github.com/astral-sh/uv"
-                            target="_blank"
-                            >UV</a
-                        >
-                        +
-                        <a
-                            href="https://peps.python.org/pep-0723/"
-                            target="_blank"
-                            >PEP 723</a
-                        >
-                    </p>
-                    <p>
-                        © 2025 uvpy.run - Execute Python scripts remotely with
-                        confidence
-                    </p>
-                </div>
+                    <div class="tool-header">
+                        <span class="tool-filename">{{ tool.filename }}</span>
+                        <span class="tool-category">{{ tool.category }}</span>
+                    </div>
+                    <div class="tool-body">
+                        <h2 class="tool-title">{{ tool.title }}</h2>
+                        <p class="tool-description">
+                            {{ tool.overview or tool.description }}
+                        </p>
+                        <div class="tool-meta">
+                            <div class="meta-item">
+                                <span class="meta-label">Version</span>
+                                <span class="meta-value">{{ tool.version }}</span>
+                            </div>
+                            <div class="meta-item">
+                                <span class="meta-label">Python</span>
+                                <span class="meta-value"
+                                    >{{ tool.requires_python }}</span
+                                >
+                            </div>
+                            <div class="meta-item">
+                                <span class="meta-label">Dependencies</span>
+                                <span class="meta-value"
+                                    >{{ tool.dependency_count }}</span
+                                >
+                            </div>
+                            <div class="meta-item">
+                                <span class="meta-label">Lines</span>
+                                <span class="meta-value"
+                                    >{{ tool.source_lines }}</span
+                                >
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tool-footer">
+                        <div class="command-row">
+                            <pre class="tool-command"><code>{{ tool.run_command }}</code></pre>
+                            <button
+                                class="copy-button"
+                                type="button"
+                                data-copy="{{ tool.run_command }}"
+                            >
+                                Copy
+                            </button>
+                        </div>
+                        <div class="action-row">
+                            <a href="{{ tool.detail_url }}" class="action-button"
+                                >Details</a
+                            >
+                            <a
+                                href="{{ tool.url }}"
+                                target="_blank"
+                                class="action-button secondary-action"
+                                >Source</a
+                            >
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </section>
+            {% else %}
+            <div class="empty-state visible">
+                No Python tools found in `static_pyfiles/`.
             </div>
-        </main>
+            {% endif %}
+
+            <div class="empty-state" id="emptyState">
+                No tools match the current search and category.
+            </div>
+
+            <section class="panel trust-panel">
+                <div class="panel-header">Run checklist</div>
+                <div class="panel-body">
+                    <ul class="trust-list">
+                        <li>Open the detail page or raw source before running unfamiliar scripts.</li>
+                        <li>Review declared dependencies and Python version requirements.</li>
+                        <li>Prefer `--help` first when a tool supports it.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <footer class="footer">
+                <span class="footer-copy">
+                    <strong>uvpy.run</strong>&nbsp;- remote Python scripts powered by
+                </span>
+                <a
+                    class="footer-link"
+                    href="https://github.com/astral-sh/uv"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="uv project on GitHub"
+                >
+                    <img
+                        class="footer-link-icon uv-icon"
+                        src="/static/uv-logo-letter.svg"
+                        alt=""
+                    />
+                    uv
+                </a>
+                <span class="footer-copy">and</span>
+                <a
+                    class="footer-link"
+                    href="https://peps.python.org/pep-0723/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >PEP 723</a>
+                <a
+                    class="footer-link primary"
+                    href="{{ open_source_url }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Open source repository on GitHub"
+                >
+                    <svg
+                        class="footer-link-icon"
+                        viewBox="0 0 16 16"
+                        aria-hidden="true"
+                    >
+                        <path
+                            fill="currentColor"
+                            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+                        />
+                    </svg>
+                    Open source on GitHub
+                </a>
+            </footer>
+        </div>
 
         <script>
-            function copyToClipboard(text) {
-                navigator.clipboard.writeText(text).then(
-                    function () {
-                        // 成功复制，静默处理
-                        console.log("Command copied to clipboard:", text);
-                    },
-                    function (err) {
-                        console.error("Could not copy text: ", err);
-                        // 复制失败时，选中文本让用户手动复制
-                        const textArea = document.createElement("textarea");
-                        textArea.value = text;
-                        document.body.appendChild(textArea);
-                        textArea.select();
-                        document.execCommand("copy");
-                        document.body.removeChild(textArea);
-                        console.log("Fallback copy method used");
-                    },
-                );
+            const cards = Array.from(document.querySelectorAll("[data-tool-card]"));
+            const searchInput = document.getElementById("toolSearch");
+            const resultCount = document.getElementById("resultCount");
+            const emptyState = document.getElementById("emptyState");
+            const filterButtons = Array.from(
+                document.querySelectorAll("[data-category]"),
+            );
+            let activeCategory = "all";
+
+            function normalize(value) {
+                return value.toLowerCase().trim();
             }
+
+            function updateTools() {
+                const query = normalize(searchInput ? searchInput.value : "");
+                let visibleCount = 0;
+
+                cards.forEach(function (card) {
+                    const cardCategory = card.dataset.category;
+                    const matchesCategory =
+                        activeCategory === "all" || cardCategory === activeCategory;
+                    const matchesSearch =
+                        !query || normalize(card.dataset.search || "").includes(query);
+                    const isVisible = matchesCategory && matchesSearch;
+
+                    card.hidden = !isVisible;
+                    if (isVisible) {
+                        visibleCount += 1;
+                    }
+                });
+
+                if (resultCount) {
+                    resultCount.textContent = visibleCount + " shown";
+                }
+                if (emptyState) {
+                    emptyState.classList.toggle("visible", visibleCount === 0);
+                }
+            }
+
+            function copyText(text, button) {
+                const setCopied = function () {
+                    const originalText = button.textContent;
+                    button.textContent = "Copied";
+                    button.classList.add("copied");
+                    window.setTimeout(function () {
+                        button.textContent = originalText;
+                        button.classList.remove("copied");
+                    }, 1600);
+                };
+
+                const fallbackCopy = function () {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = text;
+                    textArea.setAttribute("readonly", "");
+                    textArea.style.position = "absolute";
+                    textArea.style.left = "-9999px";
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(textArea);
+                    setCopied();
+                };
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(setCopied).catch(fallbackCopy);
+                    return;
+                }
+
+                fallbackCopy();
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener("input", updateTools);
+            }
+
+            filterButtons.forEach(function (button) {
+                button.addEventListener("click", function () {
+                    activeCategory = button.dataset.category;
+                    filterButtons.forEach(function (item) {
+                        item.classList.toggle("active", item === button);
+                    });
+                    updateTools();
+                });
+            });
+
+            document.querySelectorAll("[data-copy]").forEach(function (button) {
+                button.addEventListener("click", function () {
+                    copyText(button.dataset.copy, button);
+                });
+            });
         </script>
     </body>
 </html>
