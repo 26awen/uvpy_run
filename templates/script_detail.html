@@ -12,7 +12,7 @@
         <meta name="author" content="uvpy.run" />
         <meta name="robots" content="index, follow" />
         <meta property="og:type" content="article" />
-        <meta property="og:url" content="{{ request.url }}" />
+        <meta property="og:url" content="{{ canonical_url }}" />
         <meta
             property="og:title"
             content="{{ script_info.title }} - uvpy.run"
@@ -22,7 +22,7 @@
             content="{{ script_info.description }}"
         />
         <meta property="twitter:card" content="summary" />
-        <meta property="twitter:url" content="{{ request.url }}" />
+        <meta property="twitter:url" content="{{ canonical_url }}" />
         <meta
             property="twitter:title"
             content="{{ script_info.title }} - uvpy.run"
@@ -31,9 +31,13 @@
             property="twitter:description"
             content="{{ script_info.description }}"
         />
-        <link rel="canonical" href="{{ request.url }}" />
+        <link rel="canonical" href="{{ canonical_url }}" />
         <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
         <link rel="icon" type="image/x-icon" href="/static/favicon.svg" />
+
+        <script type="application/ld+json">
+            {{ structured_data|tojson }}
+        </script>
 
         <style>
             :root {

@@ -1,5 +1,6 @@
 import os
 import unittest
+import xml.etree.ElementTree as ET
 
 import main
 from tool_metadata import build_remote_usage_examples, parse_tool_metadata
@@ -55,14 +56,71 @@ class RouteSmokeTests(unittest.TestCase):
     def test_raw_python_script_is_served(self):
         response = self.client.get(
             "/passwordgen.py",
-            headers={"Host": "localhost:9999"},
+            headers={"Host": "uvpy.run"},
         )
 
         try:
             self.assertEqual(response.status_code, 200)
             self.assertIn(b"Generate secure passwords", response.data)
+            self.assertEqual(response.headers["X-Robots-Tag"], "noindex, follow")
+            self.assertEqual(
+                response.headers["Link"],
+                '<https://uvpy.run/detail/passwordgen>; rel="canonical"',
+            )
         finally:
             response.close()
+
+    def test_sitemap_is_generated_from_tool_catalog(self):
+        response = self.client.get(
+            "/sitemap.xml",
+            headers={"Host": "uvpy.run"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/xml")
+
+        namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+        sitemap = ET.fromstring(response.data)
+        locs = [
+            element.text
+            for element in sitemap.findall(".//sm:loc", namespace)
+        ]
+        script_names = sorted(
+            filename[:-3]
+            for filename in os.listdir(main.STATIC_PYFILES_ROOT)
+            if filename.endswith(".py")
+        )
+
+        self.assertIn("https://uvpy.run/", locs)
+        for script_name in script_names:
+            self.assertIn(f"https://uvpy.run/detail/{script_name}", locs)
+            self.assertNotIn(f"https://uvpy.run/{script_name}.py", locs)
+
+    def test_homepage_uses_canonical_url_for_social_metadata(self):
+        response = self.client.get("/", headers={"Host": "uvpy.run"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'<link rel="canonical" href="https://uvpy.run/"', response.data)
+        self.assertIn(b'property="og:url" content="https://uvpy.run/"', response.data)
+        self.assertIn(b'property="twitter:url" content="https://uvpy.run/"', response.data)
+
+    def test_detail_page_uses_canonical_url_and_structured_data(self):
+        response = self.client.get(
+            "/detail/passwordgen",
+            headers={"Host": "uvpy.run"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            b'<link rel="canonical" href="https://uvpy.run/detail/passwordgen"',
+            response.data,
+        )
+        self.assertIn(
+            b'property="og:url" content="https://uvpy.run/detail/passwordgen"',
+            response.data,
+        )
+        self.assertIn(b"SoftwareSourceCode", response.data)
+        self.assertIn(b"https://uvpy.run/passwordgen.py", response.data)
 
     def test_missing_python_script_returns_404(self):
         response = self.client.get(

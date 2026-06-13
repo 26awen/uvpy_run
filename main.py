@@ -1,5 +1,7 @@
 import os
-from flask import Flask, request
+from xml.sax.saxutils import escape
+
+from flask import Flask, Response, request
 from flask import send_from_directory
 from flask import render_template_string, render_template
 
@@ -17,6 +19,10 @@ STATIC_TEXTBASEDFILES_ROOT = "./static_textbasedfiles/"
 DEBUG_HOST = "0.0.0.0"
 DEBUG_PORT = 9999
 OPEN_SOURCE_URL = "https://github.com/26awen/uvpy_run"
+CANONICAL_BASE_URL = os.environ.get(
+    "CANONICAL_BASE_URL",
+    "https://uvpy.run",
+).rstrip("/")
 
 app = Flask(__name__)
 app.secret_key = FLASK_SECRET
@@ -77,6 +83,21 @@ def get_base_url():
     return f"{protocol}://{request.host}"
 
 
+def get_canonical_url(path=None):
+    """Build the preferred public URL for SEO metadata."""
+    return f"{CANONICAL_BASE_URL}{path or request.path}"
+
+
+def iter_public_python_tools():
+    """Yield public Python tool filenames and filesystem paths."""
+    if not os.path.exists(STATIC_PYFILES_ROOT):
+        return
+
+    for filename in sorted(os.listdir(STATIC_PYFILES_ROOT)):
+        if filename.endswith(".py"):
+            yield filename, os.path.join(STATIC_PYFILES_ROOT, filename)
+
+
 html_file_not_found = f"""
 <html>
 <head><title>文件未找到</title></head>
@@ -96,8 +117,40 @@ def robots_txt():
 
 @app.route("/sitemap.xml")
 def sitemap_xml():
-    """Serve sitemap.xml file"""
-    return send_from_directory(".", "sitemap.xml")
+    """Serve a sitemap generated from the current public tool catalog."""
+    entries = [
+        {
+            "loc": get_canonical_url("/"),
+            "changefreq": "weekly",
+            "priority": "1.0",
+        }
+    ]
+
+    for filename, file_path in iter_public_python_tools():
+        script_slug = filename[:-3]
+        file_info = parse_tool_metadata(file_path).to_dict()
+        entries.append(
+            {
+                "loc": get_canonical_url(f"/detail/{script_slug}"),
+                "lastmod": file_info["updated_at"],
+                "changefreq": "monthly",
+                "priority": "0.8",
+            }
+        )
+
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>']
+    lines.append('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
+    for entry in entries:
+        lines.append("    <url>")
+        lines.append(f"        <loc>{escape(entry['loc'])}</loc>")
+        if entry.get("lastmod") and entry["lastmod"] != "N/A":
+            lines.append(f"        <lastmod>{escape(entry['lastmod'])}</lastmod>")
+        lines.append(f"        <changefreq>{entry['changefreq']}</changefreq>")
+        lines.append(f"        <priority>{entry['priority']}</priority>")
+        lines.append("    </url>")
+    lines.append("</urlset>")
+
+    return Response("\n".join(lines) + "\n", mimetype="application/xml")
 
 
 @app.route("/detail/<script_name>")
@@ -119,17 +172,44 @@ def script_detail(script_name):
         
         # Get the base URL with correct protocol
         base_url = get_base_url()
+        script_slug = script_name[:-3]
+        canonical_url = get_canonical_url(f"/detail/{script_slug}")
+        raw_source_url = get_canonical_url(f"/{script_name}")
         file_info['run_command'] = f'uv run {base_url}/{script_name}'
         file_info['remote_usage_examples'] = build_remote_usage_examples(
             file_info['usage_examples'],
             base_url,
             script_name,
         )
+        structured_data = {
+            "@context": "https://schema.org",
+            "@type": "SoftwareSourceCode",
+            "name": file_info["title"],
+            "description": file_info["description"],
+            "url": canonical_url,
+            "codeRepository": OPEN_SOURCE_URL,
+            "programmingLanguage": "Python",
+            "runtimePlatform": f"Python {file_info['requires_python']}",
+            "applicationCategory": file_info["category"],
+            "author": {
+                "@type": "Organization",
+                "name": file_info["author"],
+            },
+            "isAccessibleForFree": True,
+            "codeSampleType": "full",
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": raw_source_url,
+                "encodingFormat": "text/x-python",
+            },
+        }
         
         # Use detail template
         return render_template('script_detail.html',
                              script_info=file_info,
                              base_url=base_url,
+                             canonical_url=canonical_url,
+                             structured_data=structured_data,
                              open_source_url=OPEN_SOURCE_URL,
                              script_name=script_name)
         
@@ -152,7 +232,14 @@ def server_pyfiles(filename: str):
         return render_template_string(html_file_not_found), 404
 
     try:
-        return send_from_directory(STATIC_PYFILES_ROOT, filename)
+        response = send_from_directory(STATIC_PYFILES_ROOT, filename)
+        script_slug = filename[:-3]
+        response.headers["X-Robots-Tag"] = "noindex, follow"
+        response.headers.add(
+            "Link",
+            f'<{get_canonical_url(f"/detail/{script_slug}")}>; rel="canonical"',
+        )
+        return response
     except FileNotFoundError:
         return render_template_string(html_file_not_found), 404
 
@@ -205,6 +292,7 @@ def list_tools():
             tools=py_files,
             categories=categories,
             base_url=base_url,
+            canonical_url=get_canonical_url("/"),
             open_source_url=OPEN_SOURCE_URL,
         )
         

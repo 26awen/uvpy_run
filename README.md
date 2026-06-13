@@ -21,7 +21,7 @@ version requirements belong in the script itself using
 - `static_pyfiles/` contains the published Python tools.
 - `templates/` contains the homepage and script detail pages.
 - `static/` contains icons and other static assets.
-- `robots.txt` and `sitemap.xml` support search indexing.
+- `robots.txt` and the dynamic `/sitemap.xml` route support search indexing.
 - Open source repository: <https://github.com/26awen/uvpy_run>.
 
 The app currently serves:
@@ -278,9 +278,9 @@ useful, low risk and can become examples for future tool quality:
 
 ### Phase 5: Automate SEO
 
-- Generate sitemap entries from the actual tool collection.
-- Generate JSON-LD and OpenGraph metadata from parsed tool metadata.
-- Avoid hand-maintaining URLs when scripts are added or removed.
+- [x] Generate sitemap entries from the actual tool collection.
+- [x] Generate JSON-LD and OpenGraph metadata from parsed tool metadata.
+- [x] Avoid hand-maintaining URLs when scripts are added or removed.
 
 ### Phase 6: Production Hardening
 

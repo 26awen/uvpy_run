@@ -15,7 +15,7 @@
         <meta name="author" content="uvpy.run" />
         <meta name="robots" content="index, follow" />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="{{ request.url }}" />
+        <meta property="og:url" content="{{ canonical_url }}" />
         <meta
             property="og:title"
             content="uvpy.run - Copy-ready Python tools for uv"
@@ -25,7 +25,7 @@
             content="Discover small Python tools, review source and dependencies, then run them with uv from a URL."
         />
         <meta property="twitter:card" content="summary" />
-        <meta property="twitter:url" content="{{ request.url }}" />
+        <meta property="twitter:url" content="{{ canonical_url }}" />
         <meta
             property="twitter:title"
             content="uvpy.run - Copy-ready Python tools"
@@ -34,7 +34,7 @@
             property="twitter:description"
             content="Standalone Python tools served as copy-ready uv commands."
         />
-        <link rel="canonical" href="{{ request.url }}" />
+        <link rel="canonical" href="{{ canonical_url }}" />
         <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
         <link rel="icon" type="image/x-icon" href="/static/favicon.svg" />
 
@@ -44,7 +44,7 @@
                 "@type": "WebSite",
                 "name": "uvpy.run",
                 "description": "Standalone Python tools executable with uv from a URL",
-                "url": "{{ base_url }}/",
+                "url": "{{ canonical_url }}",
                 "programmingLanguage": "Python",
                 "applicationCategory": "DeveloperApplication"
             }
