@@ -47,7 +47,7 @@ Category: Game
 Author: UVPY.RUN
 
 Usage Examples:
-    uv run snake.py --width 32 --height 18 --speed 7
+    uv run snake.py --width 32 --height 18 --speed 12
     uv run snake.py
     uv run snake.py -w 24 -h 14 -s 4
     uv run snake.py --two-player --width 40 --height 20 --speed 6
@@ -105,7 +105,7 @@ from textual.widgets import Footer, Header, Static
 
 DEFAULT_WIDTH = 32
 DEFAULT_HEIGHT = 18
-DEFAULT_SPEED = 7
+DEFAULT_SPEED = 10
 STARTING_LENGTH = 3
 POINTS_PER_FOOD = 10
 
