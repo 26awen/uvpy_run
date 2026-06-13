@@ -203,6 +203,29 @@ class ToolRiskCoherenceTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("Invalid value", result.stderr)
 
+    def test_snake_starts_with_visible_body_and_allows_tail_following(self):
+        tool = load_tool_module("snake.py")
+        game = tool.SnakeGame(width=10, height=8, speed=1)
+
+        self.assertEqual(len(game.snake), tool.STARTING_LENGTH)
+        self.assertEqual(game.snake[0], tool.Position(4, 5))
+        self.assertEqual(game.snake[-1], tool.Position(4, 3))
+
+        game.snake = [
+            tool.Position(2, 2),
+            tool.Position(2, 1),
+            tool.Position(1, 1),
+            tool.Position(1, 2),
+        ]
+        game.direction = tool.Direction.UP
+        game.food = tool.Position(7, 7)
+
+        game._update_single_player()
+
+        self.assertFalse(game.game_over)
+        self.assertEqual(game.snake[0], tool.Position(1, 2))
+        self.assertEqual(len(game.snake), 4)
+
     def test_image_tools_return_nonzero_when_processing_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             text_file = Path(tmp) / "not-an-image.txt"
