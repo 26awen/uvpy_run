@@ -162,16 +162,17 @@ class ToolRiskCoherenceTests(unittest.TestCase):
                     fail_existing=True,
                 )
 
-    def test_calendar_can_start_weeks_on_sunday(self):
+    def test_today_calendar_can_start_weeks_on_sunday(self):
         result = subprocess.run(
             [
                 sys.executable,
-                str(STATIC_PYFILES_ROOT / "cld.py"),
+                str(STATIC_PYFILES_ROOT / "today.py"),
                 "-y",
                 "2025",
                 "-m",
                 "1",
                 "-s",
+                "--no-highlight",
             ],
             cwd=PROJECT_ROOT,
             capture_output=True,
@@ -180,7 +181,25 @@ class ToolRiskCoherenceTests(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("Su Mo Tu We Th Fr Sa", result.stdout)
+        self.assertRegex(result.stdout, r"Su\s+Mo\s+Tu\s+We\s+Th\s+Fr\s+Sa")
+
+    def test_today_calendar_highlights_today_by_default(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(STATIC_PYFILES_ROOT / "today.py"),
+            ],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("today", result.stdout)
+        self.assertIn("timezone", result.stdout)
+        self.assertRegex(result.stdout, r"UTC[+-]\d{2}:\d{2}")
+        self.assertIn("highlight on", result.stdout)
 
     def test_invalid_cli_arguments_fail_before_running_tools(self):
         cases = [

@@ -135,7 +135,7 @@ useful, low risk and can become examples for future tool quality:
 
 - [ ] Keep and polish: `passwordgen.py`, `flask_secret.py`, `qr.py`.
 - [ ] Keep but standardize: `disk_usage.py`, `mkdir_batch.py`, `nospace.py`,
-      `cld.py`.
+      `today.py`.
 - [x] Clarify naming and scope in metadata: `imgtr.py`, `imgtrans.py`.
 - [ ] Keep as showcase or fun extras: `snake.py`, `brick.py`.
 - [ ] Keep as advanced/self-use tools with clearer docs:
