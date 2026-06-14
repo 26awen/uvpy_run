@@ -479,8 +479,8 @@ class ToolRiskCoherenceTests(unittest.TestCase):
             text_file.write_text("not an image", encoding="utf-8")
 
             cases = [
-                ["imgtr.py", str(text_file)],
-                ["imgtrans.py", "--input", str(text_file)],
+                ["image.py", str(text_file)],
+                ["image.py", "--input", str(text_file)],
             ]
 
             for command in cases:
@@ -526,14 +526,16 @@ class ToolRiskCoherenceTests(unittest.TestCase):
         self.assertNotEqual(missing_argument.exit_code, 0)
         self.assertIn("Missing argument", missing_argument.output)
 
-    def test_image_tool_metadata_distinguishes_single_and_batch_workflows(self):
-        imgtr = parse_tool_metadata(STATIC_PYFILES_ROOT / "imgtr.py").to_dict()
-        imgtrans = parse_tool_metadata(STATIC_PYFILES_ROOT / "imgtrans.py").to_dict()
+    def test_image_tool_metadata_covers_single_and_batch_workflows(self):
+        image_tool = parse_tool_metadata(STATIC_PYFILES_ROOT / "image.py").to_dict()
 
-        self.assertIn("single", imgtr["overview"].lower())
-        self.assertIn("batch", imgtrans["title"].lower())
-        self.assertIn("imgtrans.py", imgtr["overview"])
-        self.assertIn("imgtr.py", imgtrans["overview"])
+        overview = image_tool["overview"].lower()
+        examples = "\n".join(image_tool["usage_examples"])
+
+        self.assertIn("single-file", overview)
+        self.assertIn("batch", overview)
+        self.assertIn("--input", examples)
+        self.assertIn("--dry-run", examples)
 
 
 if __name__ == "__main__":
