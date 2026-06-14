@@ -1,5 +1,9 @@
 # uvpy.run
 
+<p align="center">
+  <img src="static/favicon-512.png" alt="uvpy.run website icon" width="96" height="96">
+</p>
+
 uvpy.run is a small Flask site for publishing standalone Python tools that can
 be run directly from a URL with [uv](https://github.com/astral-sh/uv).
 
