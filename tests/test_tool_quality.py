@@ -207,6 +207,8 @@ class ToolRiskCoherenceTests(unittest.TestCase):
             ["aria2rpc_watch.py", "127.0.0.1", "--port", "70000"],
             ["brick.py", "--speed", "0.1"],
             ["brick.py", "--special-chance", "1.5"],
+            ["qr.py", "hello", "--size", "0"],
+            ["qr.py", "hello", "--border", "-1"],
         ]
 
         for command in cases:
@@ -221,6 +223,174 @@ class ToolRiskCoherenceTests(unittest.TestCase):
 
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("Invalid value", result.stderr)
+
+    def test_nospace_requires_exactly_one_input_source(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(STATIC_PYFILES_ROOT / "nospace.py"),
+            ],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Provide text", result.stderr)
+
+        conflict = subprocess.run(
+            [
+                sys.executable,
+                str(STATIC_PYFILES_ROOT / "nospace.py"),
+                "hello",
+                "--text",
+                "world",
+            ],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+
+        self.assertNotEqual(conflict.returncode, 0)
+        self.assertIn("Choose one input source", conflict.stderr)
+
+    def test_nospace_quiet_mode_outputs_cleaned_text(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(STATIC_PYFILES_ROOT / "nospace.py"),
+                "--quiet",
+                "tabs\tand spaces",
+            ],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout, "tabs\tandspaces\n")
+
+        all_whitespace = subprocess.run(
+            [
+                sys.executable,
+                str(STATIC_PYFILES_ROOT / "nospace.py"),
+                "--quiet",
+                "--all-whitespace",
+                "tabs\tand spaces",
+            ],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+
+        self.assertEqual(
+            all_whitespace.returncode,
+            0,
+            all_whitespace.stdout + all_whitespace.stderr,
+        )
+        self.assertEqual(all_whitespace.stdout, "tabsandspaces\n")
+
+    def test_qr_generates_png_and_creates_output_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_path = Path(tmp) / "nested" / "hello.png"
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(STATIC_PYFILES_ROOT / "qr.py"),
+                    "https://uvpy.run",
+                    "--output",
+                    str(output_path),
+                    "--size",
+                    "4",
+                    "--border",
+                    "1",
+                    "--error-correction",
+                    "q",
+                    "--style",
+                    "rounded",
+                ],
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=20,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertTrue(output_path.is_file())
+            self.assertTrue(output_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n"))
+            self.assertIn("terminal preview", result.stdout)
+            self.assertIn("PNG generated", result.stdout)
+            self.assertIn("correction", result.stdout)
+
+    def test_qr_refuses_to_overwrite_without_force(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_path = Path(tmp) / "qrcode.png"
+            output_path.write_text("existing", encoding="utf-8")
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(STATIC_PYFILES_ROOT / "qr.py"),
+                    "https://uvpy.run",
+                    "--output",
+                    str(output_path),
+                ],
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=20,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("already exists", result.stderr)
+            self.assertEqual(output_path.read_text(encoding="utf-8"), "existing")
+
+            overwrite = subprocess.run(
+                [
+                    sys.executable,
+                    str(STATIC_PYFILES_ROOT / "qr.py"),
+                    "https://uvpy.run",
+                    "--output",
+                    str(output_path),
+                    "--force",
+                    "--no-terminal",
+                ],
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=20,
+            )
+
+            self.assertEqual(overwrite.returncode, 0, overwrite.stdout + overwrite.stderr)
+            self.assertTrue(output_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n"))
+
+    def test_qr_dry_run_does_not_write_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output_path = Path(tmp) / "nested" / "dry-run.png"
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(STATIC_PYFILES_ROOT / "qr.py"),
+                    "https://uvpy.run",
+                    "--output",
+                    str(output_path),
+                    "--dry-run",
+                ],
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=20,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertFalse(output_path.exists())
+            self.assertFalse(output_path.parent.exists())
+            self.assertIn("dry run", result.stdout)
+            self.assertIn("terminal preview", result.stdout)
 
     def test_snake_starts_with_visible_body_and_allows_tail_following(self):
         tool = load_tool_module("snake.py")

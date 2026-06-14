@@ -124,6 +124,40 @@ class RouteSmokeTests(unittest.TestCase):
         self.assertIn(b"SoftwareSourceCode", response.data)
         self.assertIn(b"https://uvpy.run/passwordgen.py", response.data)
 
+    def test_local_detail_page_uses_http_copy_commands(self):
+        response = self.client.get(
+            "/detail/nospace",
+            headers={"Host": "127.0.0.1:9999"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            b"uv run http://127.0.0.1:9999/nospace.py &#34;Hello World&#34;",
+            response.data,
+        )
+        self.assertNotIn(b"uv run https://127.0.0.1:9999/nospace.py", response.data)
+
+    def test_qr_primary_run_command_uses_dry_run_example(self):
+        response = self.client.get(
+            "/detail/qr",
+            headers={"Host": "127.0.0.1:9999"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            b"uv run http://127.0.0.1:9999/qr.py &#34;https://uvpy.run&#34; --dry-run",
+            response.data,
+        )
+
+    def test_homepage_qr_copy_command_uses_dry_run_example(self):
+        response = self.client.get("/", headers={"Host": "127.0.0.1:9999"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            b"uv run http://127.0.0.1:9999/qr.py &#34;https://uvpy.run&#34; --dry-run",
+            response.data,
+        )
+
     def test_missing_python_script_returns_404(self):
         response = self.client.get(
             "/does_not_exist.py",
@@ -188,7 +222,10 @@ class MetadataParsingTests(unittest.TestCase):
         ).to_dict()
 
         self.assertEqual(info["requires_python"], ">=3.12")
-        self.assertEqual(info["dependencies"], ["click>=8.0.0", "qrcode[pil]>=7.0.0"])
+        self.assertEqual(
+            info["dependencies"],
+            ["click>=8.2.1", "qrcode[pil]>=8.2.0", "rich>=14.1.0"],
+        )
 
     def test_remote_usage_examples_are_copy_ready(self):
         examples = build_remote_usage_examples(

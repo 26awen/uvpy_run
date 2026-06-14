@@ -60,13 +60,13 @@ def add_security_headers(response):
 def get_base_url():
     """
     动态获取基础URL，根据环境自动选择HTTP或HTTPS
-    在调试环境使用HTTP，生产环境或未知域名时使用HTTPS
+    本地预览使用HTTP，生产环境或未知域名时使用HTTPS
     """
     # 如果强制使用HTTPS
     if FORCE_HTTPS:
         protocol = 'https'
-    # 检查是否在调试模式且是本地地址
-    elif app.debug and request.host.startswith(('localhost', '127.0.0.1', '0.0.0.0')):
+    # 检查是否是本地地址。gunicorn 本地预览不是 debug 模式，也应使用 HTTP。
+    elif is_local_request_host():
         protocol = 'http'
     else:
         # 检查请求头中的协议信息（代理服务器设置）
@@ -83,6 +83,26 @@ def get_base_url():
     return f"{protocol}://{request.host}"
 
 
+def is_local_request_host():
+    """Return whether the current request host is a local development address."""
+    hostname = normalized_request_hostname()
+    return hostname in {"localhost", "127.0.0.1", "0.0.0.0", "::1"} or hostname.endswith(
+        ".localhost"
+    )
+
+
+def normalized_request_hostname():
+    """Return the request hostname without a port."""
+    host = (request.host or "").split(",", 1)[0].strip().lower()
+    if host.startswith("["):
+        closing_bracket = host.find("]")
+        if closing_bracket != -1:
+            return host[1:closing_bracket]
+    if host.count(":") == 1:
+        return host.rsplit(":", 1)[0]
+    return host
+
+
 def get_canonical_url(path=None):
     """Build the preferred public URL for SEO metadata."""
     return f"{CANONICAL_BASE_URL}{path or request.path}"
@@ -96,6 +116,18 @@ def iter_public_python_tools():
     for filename in sorted(os.listdir(STATIC_PYFILES_ROOT)):
         if filename.endswith(".py"):
             yield filename, os.path.join(STATIC_PYFILES_ROOT, filename)
+
+
+def build_primary_run_command(file_info, base_url, filename):
+    """Return the best copy-ready command for the primary run slot."""
+    remote_examples = build_remote_usage_examples(
+        file_info["usage_examples"],
+        base_url,
+        filename,
+    )
+    if remote_examples:
+        return remote_examples[0]
+    return f"uv run {base_url}/{filename}"
 
 
 html_file_not_found = f"""
@@ -175,11 +207,15 @@ def script_detail(script_name):
         script_slug = script_name[:-3]
         canonical_url = get_canonical_url(f"/detail/{script_slug}")
         raw_source_url = get_canonical_url(f"/{script_name}")
-        file_info['run_command'] = f'uv run {base_url}/{script_name}'
         file_info['remote_usage_examples'] = build_remote_usage_examples(
             file_info['usage_examples'],
             base_url,
             script_name,
+        )
+        file_info['run_command'] = (
+            file_info['remote_usage_examples'][0]
+            if file_info['remote_usage_examples']
+            else f'uv run {base_url}/{script_name}'
         )
         structured_data = {
             "@context": "https://schema.org",
@@ -259,7 +295,7 @@ def list_tools():
                     
                     # Extract structured information from the file
                     file_info = parse_tool_metadata(file_path).to_dict()
-                    run_command = f'uv run {base_url}/{filename}'
+                    run_command = build_primary_run_command(file_info, base_url, filename)
                     
                     py_files.append({
                         'filename': filename,

@@ -125,7 +125,7 @@ useful, low risk and can become examples for future tool quality:
 ### Generation Utilities
 
 - [x] Improve `qr.py` title/category for clearer discovery.
-- [ ] Add more copy-ready QR examples.
+- [x] Add more copy-ready QR examples.
 - [ ] `qrcode_wifi.py` - generate Wi-Fi QR codes.
 - [ ] `lorem.py` - generate placeholder text.
 - [ ] `fake_data.py` - generate small fake datasets for demos.
