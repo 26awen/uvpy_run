@@ -141,14 +141,14 @@ class RouteSmokeTests(unittest.TestCase):
     def test_static_files_use_single_flask_static_route(self):
         static_rules = [rule for rule in main.app.url_map.iter_rules() if rule.rule.startswith("/static/")]
         response = self.client.get(
-            "/static/favicon.svg",
+            "/static/favicon-32.png",
             headers={"Host": "localhost:9999"},
         )
 
         try:
             self.assertEqual(len(static_rules), 1)
             self.assertEqual(response.status_code, 200)
-            self.assertIn(b"<svg", response.data)
+            self.assertTrue(response.data.startswith(b"\x89PNG\r\n\x1a\n"))
         finally:
             response.close()
 
