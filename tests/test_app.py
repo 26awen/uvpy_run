@@ -17,6 +17,8 @@ class RouteSmokeTests(unittest.TestCase):
         self.assertIn(b"passwordgen.py", response.data)
         self.assertIn(b"How uvpy.run works", response.data)
         self.assertIn(b"PEP 723 inline script metadata", response.data)
+        self.assertIn(b"https://docs.astral.sh/uv/", response.data)
+        self.assertIn(b"official uv documentation", response.data)
         self.assertIn(b"Tool directory", response.data)
         self.assertIn(b"Search by name, category, or description", response.data)
         self.assertIn(b"data-category=\"Security\"", response.data)
