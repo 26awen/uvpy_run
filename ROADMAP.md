@@ -108,7 +108,7 @@ useful, low risk and can become examples for future tool quality:
 
 ### Image And Media Utilities
 
-- [x] Clarify `imgtr.py` and `imgtrans.py` as single-image transform vs batch conversion tools.
+- [x] Merge `imgtr.py` and `imgtrans.py` into `image.py`.
 - [ ] `imgresize.py` - resize one image or a directory of images.
 - [ ] `imgcompress.py` - compress common image formats.
 - [ ] `exifstrip.py` - remove image metadata.
@@ -136,7 +136,7 @@ useful, low risk and can become examples for future tool quality:
 - [ ] Keep and polish: `passwordgen.py`, `flask_secret.py`, `qr.py`.
 - [ ] Keep but standardize: `disk_usage.py`, `mkdir_batch.py`, `nospace.py`,
       `today.py`.
-- [x] Clarify naming and scope in metadata: `imgtr.py`, `imgtrans.py`.
+- [x] Merge image transform/conversion behavior into `image.py`.
 - [ ] Keep as showcase or fun extras: `snake.py`, `brick.py`.
 - [ ] Keep as advanced/self-use tools with clearer docs:
       `aria2rpc_watch.py`, `terminal_proxy_ip.py`.

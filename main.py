@@ -1,7 +1,7 @@
 import os
 from xml.sax.saxutils import escape
 
-from flask import Flask, Response, request
+from flask import Flask, Response, redirect, request
 from flask import send_from_directory
 from flask import render_template_string, render_template
 
@@ -23,6 +23,10 @@ CANONICAL_BASE_URL = os.environ.get(
     "CANONICAL_BASE_URL",
     "https://uvpy.run",
 ).rstrip("/")
+LEGACY_SCRIPT_ALIASES = {
+    "imgtr.py": "image.py",
+    "imgtrans.py": "image.py",
+}
 
 app = Flask(__name__)
 app.secret_key = FLASK_SECRET
@@ -192,6 +196,10 @@ def script_detail(script_name):
         # Ensure script_name ends with .py
         if not script_name.endswith('.py'):
             script_name += '.py'
+
+        if script_name in LEGACY_SCRIPT_ALIASES:
+            canonical_name = LEGACY_SCRIPT_ALIASES[script_name]
+            return redirect(f'/detail/{canonical_name[:-3]}', code=301)
         
         file_path = os.path.join(STATIC_PYFILES_ROOT, script_name)
         
@@ -266,6 +274,9 @@ def script_detail(script_name):
 def server_pyfiles(filename: str):
     if not filename.endswith('.py'):
         return render_template_string(html_file_not_found), 404
+
+    if filename in LEGACY_SCRIPT_ALIASES:
+        return redirect(f'/{LEGACY_SCRIPT_ALIASES[filename]}', code=301)
 
     try:
         response = send_from_directory(STATIC_PYFILES_ROOT, filename)

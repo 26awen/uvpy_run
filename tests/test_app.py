@@ -166,6 +166,24 @@ class RouteSmokeTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 404)
 
+    def test_legacy_image_routes_redirect_to_image_tool(self):
+        cases = [
+            ("/imgtr.py", "/image.py"),
+            ("/imgtrans.py", "/image.py"),
+            ("/detail/imgtr", "/detail/image"),
+            ("/detail/imgtrans", "/detail/image"),
+        ]
+
+        for source, target in cases:
+            with self.subTest(source=source):
+                response = self.client.get(
+                    source,
+                    headers={"Host": "localhost:9999"},
+                )
+
+                self.assertEqual(response.status_code, 301)
+                self.assertEqual(response.headers["Location"], target)
+
     def test_non_python_catch_all_returns_404(self):
         response = self.client.get(
             "/does-not-exist",
