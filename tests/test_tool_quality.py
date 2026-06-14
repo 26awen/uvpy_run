@@ -392,6 +392,27 @@ class ToolRiskCoherenceTests(unittest.TestCase):
             self.assertIn("dry run", result.stdout)
             self.assertIn("terminal preview", result.stdout)
 
+    def test_breakout_arcade_tuning_stays_lightweight(self):
+        tool = load_tool_module("brick.py")
+
+        easy = tool.resolve_difficulty("easy", speed=1.0, special_chance=0.4)
+        hard = tool.resolve_difficulty("hard", speed=1.0, special_chance=0.4)
+        extreme = tool.resolve_difficulty("normal", speed=3.0, special_chance=1.0)
+
+        self.assertGreater(easy.lives, hard.lives)
+        self.assertGreater(easy.paddle_width, hard.paddle_width)
+        self.assertGreater(hard.speed_multiplier, easy.speed_multiplier)
+        self.assertLessEqual(extreme.special_chance, 0.65)
+        self.assertEqual(set(tool.SCORE_BY_BRICK_TYPE), set(tool.BrickType))
+
+        special_types = set(tool.BrickType) - {tool.BrickType.NORMAL}
+        self.assertEqual(set(tool.BRICK_MARKERS), special_types)
+        self.assertEqual(set(tool.POWERUP_COLORS), special_types)
+
+        sound = tool.SoundEngine(enabled=False)
+        sound.play("brick")
+        self.assertEqual(sound.generated_files, {})
+
     def test_snake_starts_with_visible_body_and_allows_tail_following(self):
         tool = load_tool_module("snake.py")
         game = tool.SnakeGame(width=10, height=8, speed=1)

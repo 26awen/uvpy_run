@@ -213,8 +213,8 @@ class MetadataParsingTests(unittest.TestCase):
             section for section in info["doc_sections"] if section["title"] == "Game Controls"
         )
 
-        self.assertIn("LEFT/RIGHT Arrow Keys: Move paddle", game_controls["lines"])
-        self.assertNotIn("- LEFT/RIGHT Arrow Keys: Move paddle", game_controls["lines"])
+        self.assertIn("LEFT/RIGHT Arrow Keys or A/D: Move paddle", game_controls["lines"])
+        self.assertNotIn("- LEFT/RIGHT Arrow Keys or A/D: Move paddle", game_controls["lines"])
 
     def test_multiline_pep723_dependencies_are_parsed(self):
         info = parse_tool_metadata(
