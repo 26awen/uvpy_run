@@ -107,6 +107,15 @@ Check desktop and mobile widths when layout changes. Watch for:
 - broken source preview,
 - missing dependency metadata.
 
+## Deployment Notes
+
+Production deployment details live in `README.md` under `Production Deployment`.
+Use that flow for remote updates: fetch first, stop Gunicorn, fast-forward
+`main`, restart Gunicorn with the full `/home/wwd/.local/bin/uv` path, then
+verify both `127.0.0.1:9999` on the host and `https://uvpy.run/` through the
+Cloudflare Tunnel. Never write SSH passwords, tokens or Cloudflare credentials
+into repository files.
+
 ## Tool Metadata Rules
 
 Scripts should use PEP 723 metadata:

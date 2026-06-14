@@ -90,6 +90,95 @@ for path in paths:
 PY
 ```
 
+## Production Deployment
+
+Production currently runs the Flask app with Gunicorn on the remote host and is
+exposed through an already-running Cloudflare Tunnel. The Tunnel points at the
+local Gunicorn listener on port `9999`, so ordinary code deploys should only need
+to update the repository and restart Gunicorn.
+
+Current production facts:
+
+- SSH target: `wwd@100.121.55.115`
+- Project path: `/home/wwd/python_projects/uvpy_run`
+- Branch: `main`
+- Local app port: `9999`
+- Gunicorn command:
+  `/home/wwd/.local/bin/uv run gunicorn -w 4 -b 0.0.0.0:9999 main:app`
+
+Do not put SSH passwords, tokens, or Cloudflare credentials in this repository.
+If SSH uses password auth, enter it interactively or through the calling tool's
+secure prompt.
+
+Recommended deploy flow:
+
+```bash
+ssh wwd@100.121.55.115
+cd /home/wwd/python_projects/uvpy_run
+```
+
+Fetch first while the old app is still serving traffic:
+
+```bash
+git fetch origin main
+git status --short --branch
+git rev-parse --short HEAD
+git rev-parse --short origin/main
+```
+
+If the worktree is clean and `origin/main` is the desired target, stop Gunicorn:
+
+```bash
+if [ -f gunicorn.pid ]; then
+    kill "$(cat gunicorn.pid)" || true
+fi
+
+sleep 2
+pgrep -af 'gunicorn.*main:app' || true
+```
+
+If old Gunicorn processes remain, inspect them before killing. Avoid broad
+`pkill -f` commands that may match the current SSH shell command line.
+
+Fast-forward the code and restart with the full `uv` path. The full path matters
+because non-login SSH shells may not have `uv` on `PATH`.
+
+```bash
+git merge --ff-only origin/main
+
+nohup /home/wwd/.local/bin/uv run gunicorn \
+    -w 4 \
+    -b 0.0.0.0:9999 \
+    main:app \
+    > gunicorn.log 2>&1 < /dev/null &
+
+echo $! > gunicorn.pid
+```
+
+Keep runtime files local to the server:
+
+```bash
+grep -qxF 'gunicorn.log' .git/info/exclude || echo 'gunicorn.log' >> .git/info/exclude
+grep -qxF 'gunicorn.pid' .git/info/exclude || echo 'gunicorn.pid' >> .git/info/exclude
+```
+
+Verify the service on the remote host:
+
+```bash
+git status --short --branch
+pgrep -af 'gunicorn.*main:app'
+curl -I --max-time 10 http://127.0.0.1:9999/
+curl -I --max-time 10 http://127.0.0.1:9999/detail/passwordgen
+tail -40 gunicorn.log
+```
+
+Then verify the Cloudflare Tunnel path from your local machine:
+
+```bash
+curl -I --max-time 20 https://uvpy.run/
+curl -s --max-time 20 https://uvpy.run/detail/passwordgen | grep -m1 'Use It For'
+```
+
 ## Tool File Standard
 
 Every script in `static_pyfiles/` should aim to include:
