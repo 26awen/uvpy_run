@@ -208,12 +208,23 @@ def partition_attr(partition: Any, name: str, default: str = "") -> str:
     return str(getattr(partition, name, default) or default)
 
 
-def is_noisy_mount(partition: Any) -> bool:
+def is_noisy_mount(
+    partition: Any,
+    has_macos_data_volume: bool = False,
+) -> bool:
     """Return whether a mount is usually noise for a quick disk check."""
 
     mountpoint = partition_attr(partition, "mountpoint")
     fstype = partition_attr(partition, "fstype").lower()
+    opts = {option.strip() for option in partition_attr(partition, "opts").split(",")}
 
+    if (
+        mountpoint == "/"
+        and has_macos_data_volume
+        and fstype == "apfs"
+        and "ro" in opts
+    ):
+        return True
     if mountpoint in {"/", *MACOS_USEFUL_SYSTEM_MOUNTS}:
         return False
     if mountpoint.startswith("/Volumes/"):
@@ -253,15 +264,20 @@ def collect_disk_usages(include_all: bool = False) -> tuple[list[DiskUsage], int
     usages: list[DiskUsage] = []
     skipped_count = 0
     seen_mounts: set[str] = set()
+    partitions = psutil.disk_partitions(all=include_all)
+    has_macos_data_volume = any(
+        partition_attr(partition, "mountpoint") == "/System/Volumes/Data"
+        for partition in partitions
+    )
 
-    for partition in psutil.disk_partitions(all=include_all):
+    for partition in partitions:
         mountpoint = partition_attr(partition, "mountpoint")
         if mountpoint in seen_mounts:
             skipped_count += 1
             continue
         seen_mounts.add(mountpoint)
 
-        if not include_all and is_noisy_mount(partition):
+        if not include_all and is_noisy_mount(partition, has_macos_data_volume):
             skipped_count += 1
             continue
 

@@ -258,9 +258,47 @@ class ToolRiskCoherenceTests(unittest.TestCase):
                 "opts": "rw",
             },
         )()
+        macos_readonly_root = type(
+            "Partition",
+            (),
+            {
+                "mountpoint": "/",
+                "device": "/dev/disk3s1s1",
+                "fstype": "apfs",
+                "opts": "ro,local,rootfs",
+            },
+        )()
+        linux_root = type(
+            "Partition",
+            (),
+            {
+                "mountpoint": "/",
+                "device": "/dev/root",
+                "fstype": "ext4",
+                "opts": "rw",
+            },
+        )()
 
         self.assertTrue(tool.is_noisy_mount(noisy_mount))
         self.assertFalse(tool.is_noisy_mount(useful_mount))
+        self.assertTrue(
+            tool.is_noisy_mount(
+                macos_readonly_root,
+                has_macos_data_volume=True,
+            )
+        )
+        self.assertFalse(
+            tool.is_noisy_mount(
+                macos_readonly_root,
+                has_macos_data_volume=False,
+            )
+        )
+        self.assertFalse(
+            tool.is_noisy_mount(
+                linux_root,
+                has_macos_data_volume=True,
+            )
+        )
 
     def test_disk_usage_filters_noisy_mounts_and_emits_json(self):
         tool = load_tool_module("disk_usage.py")
