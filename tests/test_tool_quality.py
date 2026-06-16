@@ -473,6 +473,22 @@ class ToolRiskCoherenceTests(unittest.TestCase):
         self.assertEqual(len(game.snake), tool.STARTING_LENGTH + 1)
         self.assertIn("Snack collected", game.last_message)
 
+    def test_snake_smooth_renderer_uses_braille_subcells(self):
+        tool = load_tool_module("snake.py")
+        game = tool.SnakeGame(width=10, height=8, speed=1)
+
+        interpolated = game._interpolated_snake(
+            [tool.Position(2, 2)],
+            [tool.Position(2, 1)],
+            0.5,
+        )
+        rendered = game._render_smooth_board()
+
+        self.assertEqual(interpolated, [(2.0, 1.5)])
+        self.assertTrue(
+            any(0x2800 <= ord(character) <= 0x28FF for character in rendered.plain)
+        )
+
     def test_image_tools_return_nonzero_when_processing_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             text_file = Path(tmp) / "not-an-image.txt"

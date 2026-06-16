@@ -38,9 +38,9 @@
 Classic Snake Game with a Textual terminal UI
 
 A polished terminal Snake game powered by Textual and Rich. It opens into a
-full-screen command-line game, uses styled terminal rendering, and lets you tune
-the board size, speed, player count, and glyph compatibility from the command
-line.
+full-screen command-line game, uses smooth Braille sub-cell rendering in modern
+terminals, and lets you tune the board size, speed, player count, and glyph
+compatibility from the command line.
 
 Version: 1.0.0
 Category: Game
@@ -57,7 +57,8 @@ Use It For:
     - Trying a real interactive terminal app from one uv command
     - Demoing PEP 723 dependency metadata with Textual installed on demand
     - Playing a quick keyboard game without cloning a repository
-    - Checking how Rich styling and Textual key bindings feel in a small script
+    - Checking how Rich styling, Textual key bindings, and smooth terminal
+      animation feel in a small script
 
 Game Controls (Single Player):
     - WASD or Arrow Keys: Move the snake
@@ -85,6 +86,7 @@ Game Elements:
 from __future__ import annotations
 
 import random
+import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
@@ -108,6 +110,19 @@ DEFAULT_HEIGHT = 18
 DEFAULT_SPEED = 10
 STARTING_LENGTH = 3
 POINTS_PER_FOOD = 10
+SMOOTH_RENDER_FPS = 60
+SUBPIXELS_PER_CELL = 4
+BRAILLE_BASE = 0x2800
+BRAILLE_DOT_BITS = {
+    (0, 0): 0x01,
+    (0, 1): 0x02,
+    (0, 2): 0x04,
+    (0, 3): 0x40,
+    (1, 0): 0x08,
+    (1, 1): 0x10,
+    (1, 2): 0x20,
+    (1, 3): 0x80,
+}
 
 CELL_EMPTY = "empty"
 CELL_FOOD = "food"
@@ -145,6 +160,15 @@ CELL_STYLES = {
     CELL_HEAD_2: "bold #7cc7ff",
     CELL_BODY_2: "#4d8dff",
     CELL_DEAD: "dim #d45d5d",
+}
+
+CELL_PRIORITY = {
+    CELL_FOOD: 1,
+    CELL_DEAD: 2,
+    CELL_BODY_1: 3,
+    CELL_BODY_2: 3,
+    CELL_HEAD_1: 4,
+    CELL_HEAD_2: 4,
 }
 
 
@@ -239,6 +263,11 @@ class SnakeGame(App):
         self.food_eaten = 0
         self.ticks = 0
         self.last_message = "Eat food, grow longer, and keep moving."
+        self._logic_interval = self._tick_interval()
+        self._animation_started_at = time.monotonic()
+        self._previous_snake: list[Position] = []
+        self._previous_snake1: list[Position] = []
+        self._previous_snake2: list[Position] = []
 
         self._reset_game_state(reset_high_score=True)
 
@@ -253,7 +282,9 @@ class SnakeGame(App):
     def on_mount(self) -> None:
         """Start the game timer when the app mounts."""
 
-        self.set_interval(self._tick_interval(), self._game_loop)
+        self.set_interval(self._logic_interval, self._game_loop)
+        if not self.ascii_only:
+            self.set_interval(1 / SMOOTH_RENDER_FPS, self._update_display)
         self._update_display()
 
     def _tick_interval(self) -> float:
@@ -303,6 +334,7 @@ class SnakeGame(App):
             self.score = 0
 
         self._generate_food()
+        self._sync_animation_state()
 
     def _build_starting_snake(
         self,
@@ -349,6 +381,7 @@ class SnakeGame(App):
         if self.game_over or self.paused:
             return
 
+        self._begin_step_animation()
         self.ticks += 1
         if self.two_player:
             self._update_two_player()
@@ -531,6 +564,14 @@ class SnakeGame(App):
     def _render_board(self) -> Text:
         """Render the board as styled terminal text."""
 
+        if not self.ascii_only:
+            return self._render_smooth_board()
+
+        return self._render_symbol_board()
+
+    def _render_symbol_board(self) -> Text:
+        """Render the board as one terminal glyph per game cell."""
+
         glyphs = ASCII_GLYPHS if self.ascii_only else GLYPHS
         board_text = Text()
         for row_index, row in enumerate(self._board_cells()):
@@ -539,6 +580,233 @@ class SnakeGame(App):
                 board_text.append(" ")
             if row_index < self.height - 1:
                 board_text.append("\n")
+        return board_text
+
+    def _sync_animation_state(self) -> None:
+        """Reset animation snapshots to the current board positions."""
+
+        self._animation_started_at = time.monotonic() - self._logic_interval
+        if self.two_player:
+            self._previous_snake1 = list(self.snake1)
+            self._previous_snake2 = list(self.snake2)
+        else:
+            self._previous_snake = list(self.snake)
+
+    def _begin_step_animation(self) -> None:
+        """Capture the old positions before advancing one logical step."""
+
+        self._animation_started_at = time.monotonic()
+        if self.two_player:
+            self._previous_snake1 = list(self.snake1)
+            self._previous_snake2 = list(self.snake2)
+        else:
+            self._previous_snake = list(self.snake)
+
+    def _animation_progress(self) -> float:
+        """Return how far the renderer is between the last and current step."""
+
+        if self.ascii_only or self.game_over or self.paused:
+            return 1.0
+
+        elapsed = time.monotonic() - self._animation_started_at
+        return min(1.0, max(0.0, elapsed / self._logic_interval))
+
+    def _interpolated_snake(
+        self,
+        snake: list[Position],
+        previous_snake: list[Position],
+        progress: float,
+    ) -> list[tuple[float, float]]:
+        """Return sub-cell snake coordinates for smooth terminal rendering."""
+
+        if not previous_snake or progress >= 1.0:
+            return [(float(pos.row), float(pos.col)) for pos in snake]
+
+        positions: list[tuple[float, float]] = []
+        for index, current_pos in enumerate(snake):
+            previous_pos = (
+                previous_snake[index]
+                if index < len(previous_snake)
+                else previous_snake[-1]
+            )
+            distance = (
+                abs(current_pos.row - previous_pos.row)
+                + abs(current_pos.col - previous_pos.col)
+            )
+            if distance > 1:
+                previous_pos = current_pos
+
+            row = previous_pos.row + (current_pos.row - previous_pos.row) * progress
+            col = previous_pos.col + (current_pos.col - previous_pos.col) * progress
+            positions.append((row, col))
+
+        return positions
+
+    def _blank_pixel_grid(self) -> list[list[str | None]]:
+        """Create a 4x4 sub-cell grid for each game board cell."""
+
+        rows = self.height * SUBPIXELS_PER_CELL
+        cols = self.width * SUBPIXELS_PER_CELL
+        return [[None for _ in range(cols)] for _ in range(rows)]
+
+    def _paint_pixel(
+        self,
+        pixels: list[list[str | None]],
+        row: int,
+        col: int,
+        cell: str,
+    ) -> None:
+        """Paint one sub-cell, keeping the most important visible element."""
+
+        if row < 0 or row >= len(pixels) or col < 0 or col >= len(pixels[0]):
+            return
+
+        current = pixels[row][col]
+        if current is None or CELL_PRIORITY[cell] >= CELL_PRIORITY[current]:
+            pixels[row][col] = cell
+
+    def _paint_square(
+        self,
+        pixels: list[list[str | None]],
+        row: float,
+        col: float,
+        cell: str,
+        half_size: float,
+    ) -> None:
+        """Paint a smooth block centered on a logical board position."""
+
+        center_row = (row + 0.5) * SUBPIXELS_PER_CELL
+        center_col = (col + 0.5) * SUBPIXELS_PER_CELL
+        min_row = int(center_row - half_size - 1)
+        max_row = int(center_row + half_size + 1)
+        min_col = int(center_col - half_size - 1)
+        max_col = int(center_col + half_size + 1)
+
+        for pixel_row in range(min_row, max_row + 1):
+            pixel_center_row = pixel_row + 0.5
+            if abs(pixel_center_row - center_row) > half_size:
+                continue
+            for pixel_col in range(min_col, max_col + 1):
+                pixel_center_col = pixel_col + 0.5
+                if abs(pixel_center_col - center_col) <= half_size:
+                    self._paint_pixel(pixels, pixel_row, pixel_col, cell)
+
+    def _paint_smooth_snake(
+        self,
+        pixels: list[list[str | None]],
+        snake: list[Position],
+        previous_snake: list[Position],
+        head_cell: str,
+        body_cell: str,
+        progress: float,
+    ) -> None:
+        """Paint a snake at interpolated sub-cell coordinates."""
+
+        positions = self._interpolated_snake(snake, previous_snake, progress)
+        for index in range(len(positions) - 1, -1, -1):
+            row, col = positions[index]
+            is_head = index == 0
+            self._paint_square(
+                pixels,
+                row,
+                col,
+                head_cell if is_head else body_cell,
+                half_size=1.95 if is_head else 1.72,
+            )
+
+    def _render_smooth_board(self) -> Text:
+        """Render the board with Braille sub-cells for smoother motion."""
+
+        pixels = self._blank_pixel_grid()
+
+        if self.food:
+            self._paint_square(
+                pixels,
+                float(self.food.row),
+                float(self.food.col),
+                CELL_FOOD,
+                half_size=1.05,
+            )
+
+        progress = self._animation_progress()
+        if self.two_player:
+            for pos in self.dead_bodies:
+                self._paint_square(
+                    pixels,
+                    float(pos.row),
+                    float(pos.col),
+                    CELL_DEAD,
+                    half_size=1.55,
+                )
+
+            if self.alive1:
+                self._paint_smooth_snake(
+                    pixels,
+                    self.snake1,
+                    self._previous_snake1,
+                    CELL_HEAD_1,
+                    CELL_BODY_1,
+                    progress,
+                )
+            if self.alive2:
+                self._paint_smooth_snake(
+                    pixels,
+                    self.snake2,
+                    self._previous_snake2,
+                    CELL_HEAD_2,
+                    CELL_BODY_2,
+                    progress,
+                )
+        else:
+            self._paint_smooth_snake(
+                pixels,
+                self.snake,
+                self._previous_snake,
+                CELL_HEAD_1,
+                CELL_BODY_1,
+                progress,
+            )
+
+        return self._pixels_to_braille(pixels)
+
+    def _pixels_to_braille(self, pixels: list[list[str | None]]) -> Text:
+        """Pack the sub-cell grid into Braille characters."""
+
+        board_text = Text()
+        terminal_rows = self.height
+        terminal_cols = self.width * 2
+
+        for terminal_row in range(terminal_rows):
+            for terminal_col in range(terminal_cols):
+                bits = 0
+                style_cell: str | None = None
+                style_priority = 0
+                base_row = terminal_row * 4
+                base_col = terminal_col * 2
+
+                for local_row in range(4):
+                    for local_col in range(2):
+                        cell = pixels[base_row + local_row][base_col + local_col]
+                        if cell is None:
+                            continue
+
+                        bits |= BRAILLE_DOT_BITS[(local_col, local_row)]
+                        priority = CELL_PRIORITY[cell]
+                        if priority >= style_priority:
+                            style_cell = cell
+                            style_priority = priority
+
+                if bits:
+                    board_text.append(
+                        chr(BRAILLE_BASE + bits),
+                        style=CELL_STYLES[style_cell or CELL_EMPTY],
+                    )
+                else:
+                    board_text.append(" ")
+
+            if terminal_row < terminal_rows - 1:
+                board_text.append("\n")
+
         return board_text
 
     def _state_label(self) -> Text:
