@@ -286,6 +286,12 @@ Python-level checks can be misleading for lower-level networking questions, so
 those tools should wait until the product has a clearer stance on accuracy and
 scope.
 
+Interactive games are a deliberate catalog exception to the one-shot command
+preference. Keep new game scripts terminal-native and local-only: no Tkinter,
+Pygame or browser UI unless explicitly chosen later. Favor readable ASCII or
+Rich/Textual terminal output, copy-ready `uv run` examples, visible controls and
+small testable game-state functions.
+
 ### First Batch
 
 These are good candidates for the next implementation pass because they are
@@ -353,6 +359,31 @@ useful, low risk and can become examples for future tool quality:
       `today.py`.
 - [x] Merge image transform/conversion behavior into `image.py`.
 - [ ] Keep as showcase or fun extras: `snake.py`, `brick.py`.
+- [ ] Treat future arcade additions as terminal-first; `brick.py` is a legacy
+      GUI-style exception, not the model for new games.
 - [ ] Keep as advanced/self-use tools with clearer docs:
       `aria2rpc_watch.py`, `terminal_proxy_ip.py`.
 - [x] Normalize: `demo.py`.
+
+### Terminal Arcade Candidates
+
+These should stay terminal-based and inspectable, with no server-side execution
+and no graphical window dependency:
+
+- [ ] `space_invaders.py` - ASCII invaders, waves, score, lives and simple
+      projectile timing. Best first candidate because the playfield is obvious
+      in a terminal and the game logic can stay compact.
+- [ ] `frogger.py` - cross lanes of cars and moving logs using deterministic
+      row movement, simple collision checks and escalating speed.
+- [ ] `pacman_lite.py` - fixed maze, pellets, one or two ghosts and optional
+      power pellets. Keep the first version small enough to review easily.
+- [ ] `tetris.py` - falling tetrominoes with line clears, next-piece preview
+      and level speed. Higher implementation cost, but a strong terminal
+      showcase if the state machine is well tested.
+- [ ] `asteroids.py` - wraparound field with a rotating ship, thrust, shots and
+      splitting rocks. Start with four-direction or eight-direction movement
+      before considering smoother physics.
+- [ ] `bomber_dash.py` - compact Bomberman-inspired grid with timed bombs,
+      breakable blocks and simple enemy movement.
+- [ ] `climber.py` - Donkey Kong-inspired ladders, platforms and rolling
+      hazards using ASCII characters.
