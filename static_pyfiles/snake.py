@@ -1077,8 +1077,12 @@ KITTY_COLORS = {
     "food_core": rgb("#fff2a3"),
     "head1": rgb("#7dff9b"),
     "body1": rgb("#38d878"),
+    "body1_glow": rgb("#a7ffc0"),
+    "body1_shadow": rgb("#143320"),
     "head2": rgb("#7cc7ff"),
     "body2": rgb("#4d8dff"),
+    "body2_glow": rgb("#b7dcff"),
+    "body2_shadow": rgb("#142842"),
     "dead": rgb("#d45d5d"),
     "eye": rgb("#07100c"),
     "eye_glint": rgb("#f4fff8"),
@@ -1124,6 +1128,7 @@ class PixelBuffer:
         center_y: float,
         radius: float,
         color: RGBColor,
+        opacity: float = 1.0,
     ) -> None:
         """Draw an anti-aliased filled circle."""
 
@@ -1135,7 +1140,39 @@ class PixelBuffer:
         for y in range(min_y, max_y + 1):
             for x in range(min_x, max_x + 1):
                 distance = math.hypot((x + 0.5) - center_x, (y + 0.5) - center_y)
-                alpha = radius + 0.55 - distance
+                alpha = (radius + 0.55 - distance) * opacity
+                if alpha > 0:
+                    self.blend_pixel(x, y, color, alpha)
+
+    def draw_ellipse(
+        self,
+        center_x: float,
+        center_y: float,
+        radius_x: float,
+        radius_y: float,
+        angle: float,
+        color: RGBColor,
+        opacity: float = 1.0,
+    ) -> None:
+        """Draw an anti-aliased filled ellipse rotated around its center."""
+
+        cos_angle = math.cos(angle)
+        sin_angle = math.sin(angle)
+        bound = max(radius_x, radius_y) + 1
+        min_x = math.floor(center_x - bound)
+        max_x = math.ceil(center_x + bound)
+        min_y = math.floor(center_y - bound)
+        max_y = math.ceil(center_y + bound)
+        softness = 0.65 / max(1.0, min(radius_x, radius_y))
+
+        for y in range(min_y, max_y + 1):
+            for x in range(min_x, max_x + 1):
+                dx = (x + 0.5) - center_x
+                dy = (y + 0.5) - center_y
+                local_x = dx * cos_angle + dy * sin_angle
+                local_y = -dx * sin_angle + dy * cos_angle
+                distance = math.hypot(local_x / radius_x, local_y / radius_y)
+                alpha = ((1.0 + softness) - distance) / softness * opacity
                 if alpha > 0:
                     self.blend_pixel(x, y, color, alpha)
 
@@ -1145,6 +1182,7 @@ class PixelBuffer:
         end: tuple[float, float],
         radius: float,
         color: RGBColor,
+        opacity: float = 1.0,
     ) -> None:
         """Draw a rounded thick line by stamping anti-aliased circles."""
 
@@ -1157,7 +1195,7 @@ class PixelBuffer:
             progress = step / steps
             x = start_x + (end_x - start_x) * progress
             y = start_y + (end_y - start_y) * progress
-            self.draw_circle(x, y, radius, color)
+            self.draw_circle(x, y, radius, color, opacity)
 
 
 class KittySnakeRenderer:
@@ -1200,6 +1238,8 @@ class KittySnakeRenderer:
                     game._previous_snake1,
                     game.direction1,
                     KITTY_COLORS["body1"],
+                    KITTY_COLORS["body1_glow"],
+                    KITTY_COLORS["body1_shadow"],
                     KITTY_COLORS["head1"],
                     progress,
                 )
@@ -1211,6 +1251,8 @@ class KittySnakeRenderer:
                     game._previous_snake2,
                     game.direction2,
                     KITTY_COLORS["body2"],
+                    KITTY_COLORS["body2_glow"],
+                    KITTY_COLORS["body2_shadow"],
                     KITTY_COLORS["head2"],
                     progress,
                 )
@@ -1222,6 +1264,8 @@ class KittySnakeRenderer:
                 game._previous_snake,
                 game.direction,
                 KITTY_COLORS["body1"],
+                KITTY_COLORS["body1_glow"],
+                KITTY_COLORS["body1_shadow"],
                 KITTY_COLORS["head1"],
                 progress,
             )
@@ -1278,6 +1322,8 @@ class KittySnakeRenderer:
         previous_snake: list[Position],
         direction: Direction,
         body_color: RGBColor,
+        highlight_color: RGBColor,
+        shadow_color: RGBColor,
         head_color: RGBColor,
         progress: float,
     ) -> None:
@@ -1288,18 +1334,205 @@ class KittySnakeRenderer:
             return
 
         pixel_positions = [self._center(row, col) for row, col in positions]
-        body_radius = self.cell_pixels * 0.27
-        for index in range(len(pixel_positions) - 1, 0, -1):
-            buffer.draw_line(
-                pixel_positions[index],
-                pixel_positions[index - 1],
-                body_radius,
-                body_color,
-            )
+        smooth_path = self._smooth_path(pixel_positions)
+        self._draw_tapered_path(
+            buffer,
+            smooth_path,
+            shadow_color,
+            radius_scale=1.18,
+            opacity=0.5,
+            offset=(self.cell_pixels * 0.08, self.cell_pixels * 0.10),
+        )
+        self._draw_tapered_path(buffer, smooth_path, body_color)
+        self._draw_tapered_highlight(buffer, smooth_path, highlight_color)
 
-        head_x, head_y = pixel_positions[0]
+        head_x, head_y = smooth_path[0]
         head_radius = self.cell_pixels * 0.38
-        buffer.draw_circle(head_x, head_y, head_radius, head_color)
+        self._draw_head(buffer, head_x, head_y, head_radius, direction, head_color)
+
+    def _smooth_path(
+        self,
+        points: list[tuple[float, float]],
+    ) -> list[tuple[float, float]]:
+        """Round sharp 90-degree corners in a head-to-tail centerline."""
+
+        if len(points) < 3:
+            return points
+
+        smoothed: list[tuple[float, float]] = [points[0]]
+        corner_radius = self.cell_pixels * 0.45
+
+        for index in range(1, len(points) - 1):
+            previous_point = points[index - 1]
+            point = points[index]
+            next_point = points[index + 1]
+            incoming = (previous_point[0] - point[0], previous_point[1] - point[1])
+            outgoing = (next_point[0] - point[0], next_point[1] - point[1])
+            incoming_length = math.hypot(*incoming)
+            outgoing_length = math.hypot(*outgoing)
+
+            if incoming_length == 0 or outgoing_length == 0:
+                continue
+
+            incoming_unit = (incoming[0] / incoming_length, incoming[1] / incoming_length)
+            outgoing_unit = (outgoing[0] / outgoing_length, outgoing[1] / outgoing_length)
+            dot = incoming_unit[0] * outgoing_unit[0] + incoming_unit[1] * outgoing_unit[1]
+
+            if abs(dot) > 0.98:
+                smoothed.append(point)
+                continue
+
+            radius = min(corner_radius, incoming_length * 0.48, outgoing_length * 0.48)
+            enter = (
+                point[0] + incoming_unit[0] * radius,
+                point[1] + incoming_unit[1] * radius,
+            )
+            exit_point = (
+                point[0] + outgoing_unit[0] * radius,
+                point[1] + outgoing_unit[1] * radius,
+            )
+            smoothed.append(enter)
+
+            samples = max(4, int(radius / 2))
+            for sample in range(1, samples):
+                t = sample / samples
+                one_minus_t = 1.0 - t
+                curve_x = (
+                    one_minus_t * one_minus_t * enter[0]
+                    + 2 * one_minus_t * t * point[0]
+                    + t * t * exit_point[0]
+                )
+                curve_y = (
+                    one_minus_t * one_minus_t * enter[1]
+                    + 2 * one_minus_t * t * point[1]
+                    + t * t * exit_point[1]
+                )
+                smoothed.append((curve_x, curve_y))
+
+            smoothed.append(exit_point)
+
+        smoothed.append(points[-1])
+        return smoothed
+
+    def _path_length(self, points: list[tuple[float, float]]) -> float:
+        """Return total length of a pixel path."""
+
+        return sum(
+            math.hypot(
+                points[index][0] - points[index - 1][0],
+                points[index][1] - points[index - 1][1],
+            )
+            for index in range(1, len(points))
+        )
+
+    def _body_radius(self, path_progress: float) -> float:
+        """Return a tapered body radius along the head-to-tail path."""
+
+        base = self.cell_pixels * 0.24
+        if path_progress < 0.12:
+            return base * (0.9 + path_progress / 0.12 * 0.1)
+        if path_progress > 0.72:
+            tail_progress = (path_progress - 0.72) / 0.28
+            return base * (1.0 - 0.62 * tail_progress)
+        return base
+
+    def _draw_tapered_path(
+        self,
+        buffer: PixelBuffer,
+        path: list[tuple[float, float]],
+        color: RGBColor,
+        radius_scale: float = 1.0,
+        opacity: float = 1.0,
+        offset: tuple[float, float] = (0.0, 0.0),
+    ) -> None:
+        """Draw the body as a continuous tube with a subtle tapered tail."""
+
+        total_length = max(1.0, self._path_length(path))
+        traveled = 0.0
+
+        for index in range(1, len(path)):
+            start_x, start_y = path[index - 1]
+            end_x, end_y = path[index]
+            segment_length = math.hypot(end_x - start_x, end_y - start_y)
+            steps = max(1, int(segment_length / max(1.0, self.cell_pixels * 0.12)))
+
+            for step in range(steps + 1):
+                segment_progress = step / steps
+                distance = traveled + segment_length * segment_progress
+                path_progress = min(1.0, distance / total_length)
+                radius = self._body_radius(path_progress) * radius_scale
+                x = start_x + (end_x - start_x) * segment_progress + offset[0]
+                y = start_y + (end_y - start_y) * segment_progress + offset[1]
+                buffer.draw_circle(x, y, radius, color, opacity)
+
+            traveled += segment_length
+
+    def _draw_tapered_highlight(
+        self,
+        buffer: PixelBuffer,
+        path: list[tuple[float, float]],
+        color: RGBColor,
+    ) -> None:
+        """Paint a small highlight along the front half of the snake body."""
+
+        total_length = max(1.0, self._path_length(path))
+        traveled = 0.0
+
+        for index in range(1, len(path)):
+            start_x, start_y = path[index - 1]
+            end_x, end_y = path[index]
+            segment_length = math.hypot(end_x - start_x, end_y - start_y)
+            steps = max(1, int(segment_length / max(1.0, self.cell_pixels * 0.22)))
+
+            for step in range(steps + 1):
+                segment_progress = step / steps
+                distance = traveled + segment_length * segment_progress
+                path_progress = min(1.0, distance / total_length)
+                if path_progress > 0.72:
+                    continue
+                x = start_x + (end_x - start_x) * segment_progress
+                y = start_y + (end_y - start_y) * segment_progress
+                buffer.draw_circle(
+                    x - self.cell_pixels * 0.05,
+                    y - self.cell_pixels * 0.10,
+                    self._body_radius(path_progress) * 0.32,
+                    color,
+                    opacity=0.32,
+                )
+
+            traveled += segment_length
+
+    def _draw_head(
+        self,
+        buffer: PixelBuffer,
+        head_x: float,
+        head_y: float,
+        head_radius: float,
+        direction: Direction,
+        head_color: RGBColor,
+    ) -> None:
+        """Draw an oriented, slightly elongated snake head."""
+
+        row_delta, col_delta = direction.value
+        angle = math.atan2(float(row_delta), float(col_delta))
+        forward_x = float(col_delta)
+        forward_y = float(row_delta)
+
+        buffer.draw_ellipse(
+            head_x + forward_x * head_radius * 0.12,
+            head_y + forward_y * head_radius * 0.12,
+            head_radius * 1.15,
+            head_radius * 0.88,
+            angle,
+            head_color,
+        )
+        buffer.draw_circle(
+            head_x + forward_x * head_radius * 0.68,
+            head_y + forward_y * head_radius * 0.68,
+            head_radius * 0.34,
+            head_color,
+            opacity=0.9,
+        )
         self._draw_eyes(buffer, head_x, head_y, head_radius, direction)
 
     def _draw_eyes(

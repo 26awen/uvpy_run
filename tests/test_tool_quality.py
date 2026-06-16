@@ -746,6 +746,16 @@ class ToolRiskCoherenceTests(unittest.TestCase):
         self.assertIn("c=20,r=8", chunks[0])
         self.assertTrue(chunks[-1].endswith("\x1b\\"))
 
+    def test_snake_kitty_renderer_smooths_corners_and_tapers_tail(self):
+        tool = load_tool_module("snake.py")
+        renderer = tool.KittySnakeRenderer(width=10, height=8, cell_pixels=10)
+
+        path = renderer._smooth_path([(50.0, 50.0), (50.0, 30.0), (30.0, 30.0)])
+
+        self.assertGreater(len(path), 3)
+        self.assertNotIn((50.0, 30.0), path)
+        self.assertGreater(renderer._body_radius(0.5), renderer._body_radius(1.0))
+
     def test_image_tools_return_nonzero_when_processing_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             text_file = Path(tmp) / "not-an-image.txt"
