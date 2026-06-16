@@ -802,17 +802,33 @@ class ToolRiskCoherenceTests(unittest.TestCase):
         renderer = tool.KittySnakeRenderer(width=10, height=8, cell_pixels=4)
         state = tool.FancyState(width=10, height=8, rng=random.Random(5))
         state.powerup = tool.FancyPowerup(
-            tool.FANCY_POWERUP_PRISM_FRUIT,
+            tool.FANCY_POWERUP_FEVER_STAR,
             tool.Position(3, 3),
         )
         state.moon_gates = (tool.Position(1, 1), tool.Position(6, 8))
-        state.prism_ticks = 5
+        state.fever_ticks = 5
         state.add_burst(tool.Position(4, 4), tool.KITTY_COLORS["prism_blue"], 4, 2.0)
 
         frame = renderer.render(game, progress=1.0, fancy_state=state)
 
         self.assertEqual(len(frame), renderer.pixel_width * renderer.pixel_height * 3)
         self.assertGreater(len(set(frame)), 1)
+
+    def test_snake_fancy_fever_star_charges_neon_fever(self):
+        tool = load_tool_module("snake.py")
+        game = tool.SnakeGame(width=10, height=8, speed=1)
+        state = tool.FancyState(width=10, height=8, rng=random.Random(6))
+        state.powerup = tool.FancyPowerup(
+            tool.FANCY_POWERUP_FEVER_STAR,
+            game.snake[0],
+        )
+        state.fever_energy = tool.FANCY_FEVER_MAX - 1
+
+        self.assertTrue(state.maybe_activate_powerup(game))
+
+        self.assertTrue(state.is_fever_active())
+        self.assertEqual(state.powerup, None)
+        self.assertIn("Neon Fever", game.last_message)
 
     def test_snake_fancy_moon_gate_teleports_head(self):
         tool = load_tool_module("snake.py")

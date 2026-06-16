@@ -136,18 +136,21 @@ KITTY_PLACEMENT_ID = 1
 KITTY_CHUNK_SIZE = 4096
 FANCY_POWERUP_MOON_GATE = "moon_gate"
 FANCY_POWERUP_GLASS_TAIL = "glass_tail"
-FANCY_POWERUP_PRISM_FRUIT = "prism_fruit"
+FANCY_POWERUP_FEVER_STAR = "fever_star"
 FANCY_POWERUP_TYPES = (
     FANCY_POWERUP_MOON_GATE,
     FANCY_POWERUP_GLASS_TAIL,
-    FANCY_POWERUP_PRISM_FRUIT,
+    FANCY_POWERUP_FEVER_STAR,
 )
 FANCY_POWERUP_TTL = 72
 FANCY_POWERUP_SPAWN_FOOD_INTERVAL = 2
 FANCY_MOON_GATE_TICKS = 90
 FANCY_GLASS_TAIL_TICKS = 80
-FANCY_PRISM_TICKS = 70
-FANCY_COMBO_WINDOW_TICKS = 32
+FANCY_FEVER_TICKS = 90
+FANCY_FEVER_MAX = 100
+FANCY_FEVER_FOOD_ENERGY = 18
+FANCY_FEVER_STAR_ENERGY = 48
+FANCY_EAT_WAVE_TICKS = 18
 BRAILLE_DOT_BITS = {
     (0, 0): 0x01,
     (0, 1): 0x02,
@@ -1105,6 +1108,8 @@ KITTY_COLORS = {
     "moon_gate_core": rgb("#7cc7ff"),
     "glass_tail": rgb("#9ff7ff"),
     "glass_tail_core": rgb("#e2fdff"),
+    "fever_star": rgb("#ffcc66"),
+    "fever_core": rgb("#fff2a3"),
     "prism_red": rgb("#ff6b9d"),
     "prism_gold": rgb("#ffcc66"),
     "prism_green": rgb("#7dff9b"),
@@ -1146,13 +1151,13 @@ class FancyState:
         self.powerup: FancyPowerup | None = None
         self.particles: list[FancyParticle] = []
         self.foods_since_powerup = 0
-        self.combo = 0
-        self.combo_timer = 0
+        self.fever_energy = 0
+        self.fever_ticks = 0
+        self.eat_wave_ticks = 0
         self.moon_gate_ticks = 0
         self.moon_gates: tuple[Position, Position] | None = None
         self.glass_tail_ticks = 0
         self.glass_tail_charges = 0
-        self.prism_ticks = 0
         self.pulse = 0.0
 
     def reset(self) -> None:
@@ -1161,13 +1166,13 @@ class FancyState:
         self.powerup = None
         self.particles = []
         self.foods_since_powerup = 0
-        self.combo = 0
-        self.combo_timer = 0
+        self.fever_energy = 0
+        self.fever_ticks = 0
+        self.eat_wave_ticks = 0
         self.moon_gate_ticks = 0
         self.moon_gates = None
         self.glass_tail_ticks = 0
         self.glass_tail_charges = 0
-        self.prism_ticks = 0
         self.pulse = 0.0
 
     def update_frame(self, dt: float) -> None:
@@ -1192,10 +1197,8 @@ class FancyState:
             if self.powerup.ttl <= 0:
                 self.powerup = None
 
-        if self.combo_timer > 0:
-            self.combo_timer -= 1
-            if self.combo_timer == 0:
-                self.combo = 0
+        if self.eat_wave_ticks > 0:
+            self.eat_wave_ticks -= 1
 
         if self.moon_gate_ticks > 0:
             self.moon_gate_ticks -= 1
@@ -1207,22 +1210,29 @@ class FancyState:
             if self.glass_tail_ticks == 0:
                 self.glass_tail_charges = 0
 
-        if self.prism_ticks > 0:
-            self.prism_ticks -= 1
+        if self.fever_ticks > 0:
+            self.fever_ticks -= 1
+            if self.fever_ticks == 0:
+                self.fever_energy = 0
 
     def on_food_eaten(self, game: SnakeGame, position: Position) -> None:
         """Handle fancy scoring, particles, and possible powerup spawn."""
 
-        self.combo += 1
-        self.combo_timer = FANCY_COMBO_WINDOW_TICKS
         self.foods_since_powerup += 1
+        self.eat_wave_ticks = FANCY_EAT_WAVE_TICKS
         self.add_burst(position, KITTY_COLORS["food"], count=14, speed=4.2)
 
-        if self.prism_ticks > 0:
-            bonus = POINTS_PER_FOOD * min(4, max(1, self.combo - 1))
+        if self.is_fever_active():
+            bonus = POINTS_PER_FOOD // 2
             game.score += bonus
             game.high_score = max(game.high_score, game.score)
-            game.last_message = f"Prism combo x{self.combo}. +{bonus} shimmer bonus."
+            game.last_message = f"Neon Fever surges. +{bonus} overdrive bonus."
+        else:
+            self.add_fever_energy(FANCY_FEVER_FOOD_ENERGY)
+            if self.is_fever_active():
+                game.last_message = "Neon Fever ignited. The board is awake."
+            else:
+                game.last_message = f"Fever energy {self.fever_energy}/{FANCY_FEVER_MAX}."
 
         if self.foods_since_powerup >= FANCY_POWERUP_SPAWN_FOOD_INTERVAL:
             self.foods_since_powerup = 0
@@ -1279,10 +1289,13 @@ class FancyState:
             self.glass_tail_ticks = FANCY_GLASS_TAIL_TICKS
             self.glass_tail_charges = 1
             game.last_message = "Glass Tail armed. One self-hit will shatter away."
-        elif kind == FANCY_POWERUP_PRISM_FRUIT:
-            self.prism_ticks = FANCY_PRISM_TICKS
-            self.combo_timer = FANCY_COMBO_WINDOW_TICKS
-            game.last_message = "Prism Fruit lit. Keep eating for shimmer bonuses."
+        elif kind == FANCY_POWERUP_FEVER_STAR:
+            self.add_fever_energy(FANCY_FEVER_STAR_ENERGY)
+            self.eat_wave_ticks = FANCY_EAT_WAVE_TICKS
+            if self.is_fever_active():
+                game.last_message = "Fever Star detonated. Neon Fever is live."
+            else:
+                game.last_message = f"Fever Star charged {self.fever_energy}/{FANCY_FEVER_MAX}."
 
         self.add_burst(position, self.powerup_color(kind), count=20, speed=5.4)
         return True
@@ -1325,7 +1338,21 @@ class FancyState:
             return KITTY_COLORS["moon_gate"]
         if kind == FANCY_POWERUP_GLASS_TAIL:
             return KITTY_COLORS["glass_tail"]
-        return KITTY_COLORS["prism_gold"]
+        return KITTY_COLORS["fever_star"]
+
+    def add_fever_energy(self, amount: int) -> None:
+        """Charge the Fever meter and enter Neon Fever when full."""
+
+        if self.is_fever_active():
+            return
+        self.fever_energy = min(FANCY_FEVER_MAX, self.fever_energy + amount)
+        if self.fever_energy >= FANCY_FEVER_MAX:
+            self.fever_ticks = FANCY_FEVER_TICKS
+
+    def is_fever_active(self) -> bool:
+        """Return whether Neon Fever is currently active."""
+
+        return self.fever_ticks > 0
 
     def add_burst(
         self,
@@ -1645,8 +1672,40 @@ class KittySnakeRenderer:
     def _draw_fancy_floor(self, buffer: PixelBuffer, fancy_state: FancyState) -> None:
         """Draw active fancy board elements below the snake."""
 
+        if fancy_state.is_fever_active():
+            pulse = 0.5 + 0.5 * math.sin(fancy_state.pulse * 2.4)
+            for row in range(1, self.height):
+                if row % 3 == 0:
+                    y = row * self.cell_pixels
+                    buffer.draw_rect(
+                        0,
+                        y,
+                        buffer.width,
+                        1,
+                        KITTY_COLORS["prism_violet"],
+                    )
+            buffer.draw_circle(
+                self.pixel_width * 0.5,
+                self.pixel_height * 0.5,
+                min(self.pixel_width, self.pixel_height) * (0.35 + pulse * 0.05),
+                KITTY_COLORS["prism_blue"],
+                opacity=0.035,
+            )
+
         if fancy_state.moon_gates:
             pulse = 0.5 + 0.5 * math.sin(fancy_state.pulse * 2.1)
+            gate_centers = [
+                self._center(float(gate.row), float(gate.col))
+                for gate in fancy_state.moon_gates
+            ]
+            if len(gate_centers) == 2:
+                buffer.draw_line(
+                    gate_centers[0],
+                    gate_centers[1],
+                    self.cell_pixels * 0.05,
+                    KITTY_COLORS["moon_gate"],
+                    opacity=0.28 + pulse * 0.12,
+                )
             for index, gate in enumerate(fancy_state.moon_gates):
                 center_x, center_y = self._center(float(gate.row), float(gate.col))
                 color = (
@@ -1711,23 +1770,38 @@ class KittySnakeRenderer:
                 opacity=0.85,
             )
         else:
-            prism_colors = [
-                KITTY_COLORS["prism_red"],
-                KITTY_COLORS["prism_gold"],
-                KITTY_COLORS["prism_green"],
-                KITTY_COLORS["prism_blue"],
-                KITTY_COLORS["prism_violet"],
-            ]
-            for index, color in enumerate(prism_colors):
-                angle = fancy_state.pulse + math.tau * index / len(prism_colors)
-                x = center_x + math.cos(angle) * self.cell_pixels * 0.16
-                y = center_y + math.sin(angle) * self.cell_pixels * 0.16
+            star_radius = self.cell_pixels * (0.5 + pulse * 0.08)
+            buffer.draw_diamond(
+                center_x,
+                center_y,
+                star_radius,
+                KITTY_COLORS["fever_star"],
+                opacity=0.88,
+            )
+            buffer.draw_circle(
+                center_x,
+                center_y,
+                self.cell_pixels * 0.22,
+                KITTY_COLORS["fever_core"],
+                opacity=0.92,
+            )
+            for index, color in enumerate(
+                [
+                    KITTY_COLORS["prism_red"],
+                    KITTY_COLORS["prism_blue"],
+                    KITTY_COLORS["prism_green"],
+                    KITTY_COLORS["prism_violet"],
+                ]
+            ):
+                angle = fancy_state.pulse * 1.3 + math.tau * index / 4
+                spark_x = center_x + math.cos(angle) * self.cell_pixels * 0.48
+                spark_y = center_y + math.sin(angle) * self.cell_pixels * 0.48
                 buffer.draw_circle(
-                    x,
-                    y,
-                    self.cell_pixels * (0.2 + pulse * 0.03),
+                    spark_x,
+                    spark_y,
+                    self.cell_pixels * 0.08,
                     color,
-                    opacity=0.86,
+                    opacity=0.58,
                 )
 
     def _draw_snake(
@@ -1762,8 +1836,13 @@ class KittySnakeRenderer:
         )
         self._draw_tapered_path(buffer, smooth_path, body_color)
         self._draw_tapered_highlight(buffer, smooth_path, highlight_color)
-        if fancy_state is not None and fancy_state.prism_ticks > 0:
-            self._draw_prism_body(buffer, smooth_path, fancy_state)
+        if fancy_state is not None:
+            if fancy_state.glass_tail_charges > 0 or fancy_state.glass_tail_ticks > 0:
+                self._draw_glass_tail(buffer, smooth_path)
+            if fancy_state.eat_wave_ticks > 0:
+                self._draw_eat_wave(buffer, smooth_path, fancy_state)
+            if fancy_state.is_fever_active():
+                self._draw_fever_body(buffer, smooth_path, fancy_state)
 
         head_x, head_y = smooth_path[0]
         head_radius = self.cell_pixels * 0.38
@@ -1886,13 +1965,13 @@ class KittySnakeRenderer:
 
             traveled += segment_length
 
-    def _draw_prism_body(
+    def _draw_fever_body(
         self,
         buffer: PixelBuffer,
         path: list[tuple[float, float]],
         fancy_state: FancyState,
     ) -> None:
-        """Overlay rotating prism sparks on an active Prism Fruit body."""
+        """Overlay rotating neon sparks during Fever."""
 
         if len(path) < 2:
             return
@@ -1928,7 +2007,86 @@ class KittySnakeRenderer:
                     y,
                     self._body_radius(path_progress) * 0.44,
                     colors[color_index],
-                    opacity=0.5,
+                    opacity=0.58,
+                )
+
+            traveled += segment_length
+
+    def _draw_eat_wave(
+        self,
+        buffer: PixelBuffer,
+        path: list[tuple[float, float]],
+        fancy_state: FancyState,
+    ) -> None:
+        """Paint a bright wave that runs down the snake after eating."""
+
+        if len(path) < 2:
+            return
+
+        wave_age = 1.0 - (fancy_state.eat_wave_ticks / FANCY_EAT_WAVE_TICKS)
+        wave_center = wave_age * 0.82
+        total_length = max(1.0, self._path_length(path))
+        traveled = 0.0
+
+        for index in range(1, len(path)):
+            start_x, start_y = path[index - 1]
+            end_x, end_y = path[index]
+            segment_length = math.hypot(end_x - start_x, end_y - start_y)
+            steps = max(1, int(segment_length / max(1.0, self.cell_pixels * 0.18)))
+
+            for step in range(steps + 1):
+                segment_progress = step / steps
+                distance = traveled + segment_length * segment_progress
+                path_progress = min(1.0, distance / total_length)
+                wave_distance = abs(path_progress - wave_center)
+                if wave_distance > 0.09:
+                    continue
+                opacity = (1.0 - wave_distance / 0.09) * 0.72
+                x = start_x + (end_x - start_x) * segment_progress
+                y = start_y + (end_y - start_y) * segment_progress
+                buffer.draw_circle(
+                    x,
+                    y,
+                    self._body_radius(path_progress) * 0.72,
+                    KITTY_COLORS["fever_core"],
+                    opacity=opacity,
+                )
+
+            traveled += segment_length
+
+    def _draw_glass_tail(
+        self,
+        buffer: PixelBuffer,
+        path: list[tuple[float, float]],
+    ) -> None:
+        """Tint the tail segment while Glass Tail is armed."""
+
+        if len(path) < 2:
+            return
+
+        total_length = max(1.0, self._path_length(path))
+        traveled = 0.0
+
+        for index in range(1, len(path)):
+            start_x, start_y = path[index - 1]
+            end_x, end_y = path[index]
+            segment_length = math.hypot(end_x - start_x, end_y - start_y)
+            steps = max(1, int(segment_length / max(1.0, self.cell_pixels * 0.2)))
+
+            for step in range(steps + 1):
+                segment_progress = step / steps
+                distance = traveled + segment_length * segment_progress
+                path_progress = min(1.0, distance / total_length)
+                if path_progress < 0.64:
+                    continue
+                x = start_x + (end_x - start_x) * segment_progress
+                y = start_y + (end_y - start_y) * segment_progress
+                buffer.draw_circle(
+                    x,
+                    y,
+                    self._body_radius(path_progress) * 0.9,
+                    KITTY_COLORS["glass_tail"],
+                    opacity=0.46,
                 )
 
             traveled += segment_length
@@ -2144,9 +2302,10 @@ class KittySnakeGame:
             if not self.game.paused and not self.game.game_over:
                 while now >= self.next_tick:
                     self._advance_game()
-                    self.next_tick += self.game._logic_interval
-                    if now - self.next_tick > self.game._logic_interval:
-                        self.next_tick = now + self.game._logic_interval
+                    logic_interval = self._logic_interval()
+                    self.next_tick += logic_interval
+                    if now - self.next_tick > logic_interval:
+                        self.next_tick = now + logic_interval
 
             if now >= next_frame:
                 self._render_frame()
@@ -2169,6 +2328,13 @@ class KittySnakeGame:
             self.game._update_two_player()
         else:
             self.game._update_single_player()
+
+    def _logic_interval(self) -> float:
+        """Return the current game tick interval, including fancy modifiers."""
+
+        if self.fancy_state is not None and self.fancy_state.is_fever_active():
+            return self.game._logic_interval * 0.84
+        return self.game._logic_interval
 
     def _update_single_player_fancy(self) -> None:
         """Update single-player logic with Kitty fancy powerups."""
@@ -2279,13 +2445,13 @@ class KittySnakeGame:
                 return
             if key == "space":
                 self.game.action_toggle_pause()
-                self.next_tick = now + self.game._logic_interval
+                self.next_tick = now + self._logic_interval()
                 continue
             if key == "r":
                 self.game.action_restart()
                 if self.fancy_state is not None:
                     self.fancy_state.reset()
-                self.next_tick = now + self.game._logic_interval
+                self.next_tick = now + self._logic_interval()
                 continue
             self._queue_movement(key)
 
@@ -2419,17 +2585,15 @@ class KittySnakeGame:
             return ""
 
         statuses: list[str] = []
-        if fancy_state.combo > 1:
-            statuses.append(f"combo x{fancy_state.combo}")
-        if fancy_state.prism_ticks > 0:
-            statuses.append("prism")
+        if fancy_state.is_fever_active():
+            statuses.append(f"fever {fancy_state.fever_ticks}")
+        else:
+            statuses.append(f"fever {fancy_state.fever_energy}%")
         if fancy_state.glass_tail_charges > 0:
             statuses.append("glass tail")
         if fancy_state.moon_gates:
             statuses.append("moon gate")
 
-        if not statuses:
-            return ""
         return "  \033[38;2;199;140;255m" + " / ".join(statuses) + "\033[0m"
 
     def _message_line(self) -> str:
@@ -2508,7 +2672,7 @@ class KittySnakeGame:
 @click.option(
     "--fancy",
     is_flag=True,
-    help="Enable Kitty-only fancy powerups, combo effects, and particles.",
+    help="Enable Kitty-only fancy powerups, Neon Fever, and particles.",
 )
 def main(
     width: int,
