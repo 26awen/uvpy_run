@@ -201,6 +201,185 @@ class ToolRiskCoherenceTests(unittest.TestCase):
         self.assertRegex(result.stdout, r"UTC[+-]\d{2}:\d{2}")
         self.assertIn("highlight on", result.stdout)
 
+    def test_disk_usage_helpers_prioritize_readable_mounts(self):
+        tool = load_tool_module("disk_usage.py")
+        root = tool.DiskUsage(
+            mountpoint="/",
+            device="/dev/root",
+            fstype="ext4",
+            total=1000,
+            used=900,
+            free=100,
+            percent=90.0,
+            opts="rw",
+        )
+        data = tool.DiskUsage(
+            mountpoint="/data",
+            device="/dev/data",
+            fstype="ext4",
+            total=1000,
+            used=500,
+            free=500,
+            percent=50.0,
+            opts="rw",
+        )
+
+        self.assertEqual(tool.format_bytes(1536), "1.5 KB")
+        self.assertEqual(tool.usage_status(90).label, "critical")
+        self.assertEqual(
+            [
+                usage.mountpoint
+                for usage in tool.sort_disk_usages([data, root], "percent")
+            ],
+            ["/", "/data"],
+        )
+        self.assertEqual(
+            [usage.mountpoint for usage in tool.sort_disk_usages([data, root], "free")],
+            ["/", "/data"],
+        )
+        self.assertEqual(tool.limit_disk_usages([root, data], 1), ([root], 1))
+        noisy_mount = type(
+            "Partition",
+            (),
+            {
+                "mountpoint": "/System/Volumes/Preboot",
+                "device": "/dev/disk1s2",
+                "fstype": "apfs",
+                "opts": "rw",
+            },
+        )()
+        useful_mount = type(
+            "Partition",
+            (),
+            {
+                "mountpoint": "/System/Volumes/Data",
+                "device": "/dev/disk3s5",
+                "fstype": "apfs",
+                "opts": "rw",
+            },
+        )()
+
+        self.assertTrue(tool.is_noisy_mount(noisy_mount))
+        self.assertFalse(tool.is_noisy_mount(useful_mount))
+
+    def test_disk_usage_filters_noisy_mounts_and_emits_json(self):
+        tool = load_tool_module("disk_usage.py")
+        runner = CliRunner()
+        sample = tool.DiskUsage(
+            mountpoint="/",
+            device="/dev/root",
+            fstype="ext4",
+            total=1000,
+            used=250,
+            free=750,
+            percent=25.0,
+            opts="rw",
+        )
+
+        tool.collect_disk_usages = lambda include_all=False: ([sample], 3)
+
+        result = runner.invoke(tool.main, ["--json"])
+        payload = json.loads(result.output)
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(payload["skipped_count"], 3)
+        self.assertEqual(payload["partitions"][0]["mountpoint"], "/")
+        self.assertEqual(payload["partitions"][0]["status"], "ok")
+
+    def test_disk_usage_rejects_overlapping_thresholds(self):
+        tool = load_tool_module("disk_usage.py")
+        runner = CliRunner()
+
+        result = runner.invoke(tool.main, ["--warn", "90", "--critical", "80"])
+
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("--warn must be below --critical", result.output)
+
+    def test_aria2_watcher_help_and_metadata_are_aria2c_first(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(STATIC_PYFILES_ROOT / "aria2rpc_watch.py"),
+                "--help",
+            ],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+
+        output = result.stdout + result.stderr
+        info = parse_tool_metadata(STATIC_PYFILES_ROOT / "aria2rpc_watch.py").to_dict()
+
+        self.assertEqual(result.returncode, 0, output)
+        self.assertIn("aria2c JSON-RPC", output)
+        self.assertIn("HOST defaults to 127.0.0.1", output)
+        self.assertIn("--once", output)
+        self.assertIn("aria2c", info["title"])
+        self.assertIn("uv run aria2rpc_watch.py", info["usage_examples"])
+
+    def test_aria2_watcher_transfer_helpers_cover_rpc_rows(self):
+        tool = load_tool_module("aria2rpc_watch.py")
+        active = {
+            "gid": "abc123456789",
+            "status": "active",
+            "totalLength": "1048576",
+            "completedLength": "524288",
+            "downloadSpeed": "1024",
+            "connections": "3",
+            "files": [{"path": "/tmp/ubuntu.iso", "uris": []}],
+        }
+        stopped = {
+            "gid": "deadbeef",
+            "status": "complete",
+            "totalLength": "10",
+            "completedLength": "10",
+        }
+        snapshot = tool.Aria2Snapshot(
+            stats={"downloadSpeed": "2048", "uploadSpeed": "0"},
+            active=[active],
+            waiting=[],
+            stopped=[stopped],
+        )
+
+        visible, hidden_count = tool.visible_downloads(
+            snapshot,
+            rows=1,
+            include_stopped=True,
+        )
+
+        self.assertEqual(tool.download_name(active), "ubuntu.iso")
+        self.assertAlmostEqual(tool.progress_percent(active), 50.0)
+        self.assertEqual(tool.format_eta(tool.eta_seconds(active)), "8m 32s")
+        self.assertEqual(visible, [active])
+        self.assertEqual(hidden_count, 1)
+        with self.assertRaises(tool.Aria2RpcError):
+            tool.extract_rpc_result(
+                {"error": {"code": 1, "message": "Unauthorized"}}
+            )
+
+    def test_aria2_watcher_once_mode_reports_connection_failure(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(STATIC_PYFILES_ROOT / "aria2rpc_watch.py"),
+                "--once",
+                "--no-screen",
+                "--port",
+                "1",
+            ],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+
+        output = result.stdout + result.stderr
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Cannot reach aria2c JSON-RPC", output)
+        self.assertIn("Start local aria2c RPC", output)
+
     def test_invalid_cli_arguments_fail_before_running_tools(self):
         cases = [
             ["aria2rpc_watch.py", "127.0.0.1", "--interval", "-1"],
