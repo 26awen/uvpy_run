@@ -39,8 +39,9 @@ Classic Snake Game with a Textual terminal UI
 
 A polished terminal Snake game powered by Textual and Rich. It opens into a
 full-screen command-line game, uses smooth Braille sub-cell rendering in modern
-terminals, and lets you tune the board size, speed, player count, and glyph
-compatibility from the command line.
+terminals, can use Kitty graphics for true pixel animation, and lets you tune
+the board size, speed, player count, and glyph compatibility from the command
+line.
 
 Version: 1.0.0
 Category: Game
@@ -51,14 +52,17 @@ Usage Examples:
     uv run snake.py
     uv run snake.py -w 24 -h 14 -s 4
     uv run snake.py --two-player --width 40 --height 20 --speed 6
+    uv run snake.py --mode-smooth --width 32 --height 18
+    uv run snake.py --mode-kitty --width 32 --height 18
+    uv run snake.py --mode-classic
     uv run snake.py --ascii
 
 Use It For:
     - Trying a real interactive terminal app from one uv command
     - Demoing PEP 723 dependency metadata with Textual installed on demand
     - Playing a quick keyboard game without cloning a repository
-    - Checking how Rich styling, Textual key bindings, and smooth terminal
-      animation feel in a small script
+    - Checking how Rich styling, Textual key bindings, Braille rendering, and
+      Kitty graphics animation feel in a small script
 
 Game Controls (Single Player):
     - WASD or Arrow Keys: Move the snake
@@ -85,8 +89,16 @@ Game Elements:
 
 from __future__ import annotations
 
+import base64
+import math
+import os
 import random
+import select
+import sys
+import termios
 import time
+import tty
+import zlib
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
@@ -110,9 +122,17 @@ DEFAULT_HEIGHT = 18
 DEFAULT_SPEED = 10
 STARTING_LENGTH = 3
 POINTS_PER_FOOD = 10
+RENDER_MODE_SMOOTH = "smooth"
+RENDER_MODE_CLASSIC = "classic"
+RENDER_MODE_KITTY = "kitty"
 SMOOTH_RENDER_FPS = 60
 SUBPIXELS_PER_CELL = 4
 BRAILLE_BASE = 0x2800
+KITTY_RENDER_FPS = 60
+KITTY_CELL_PIXELS = 18
+KITTY_IMAGE_ID = 260826
+KITTY_PLACEMENT_ID = 1
+KITTY_CHUNK_SIZE = 4096
 BRAILLE_DOT_BITS = {
     (0, 0): 0x01,
     (0, 1): 0x02,
@@ -247,6 +267,7 @@ class SnakeGame(App):
         speed: int = DEFAULT_SPEED,
         two_player: bool = False,
         ascii_only: bool = False,
+        render_mode: str = RENDER_MODE_SMOOTH,
     ):
         super().__init__()
         self.width = width
@@ -254,6 +275,7 @@ class SnakeGame(App):
         self.speed = speed
         self.two_player = two_player
         self.ascii_only = ascii_only
+        self.render_mode = render_mode
 
         self.game_display: Static | None = None
         self.food: Optional[Position] = None
@@ -283,7 +305,7 @@ class SnakeGame(App):
         """Start the game timer when the app mounts."""
 
         self.set_interval(self._logic_interval, self._game_loop)
-        if not self.ascii_only:
+        if self._uses_smooth_renderer():
             self.set_interval(1 / SMOOTH_RENDER_FPS, self._update_display)
         self._update_display()
 
@@ -564,10 +586,15 @@ class SnakeGame(App):
     def _render_board(self) -> Text:
         """Render the board as styled terminal text."""
 
-        if not self.ascii_only:
+        if self._uses_smooth_renderer():
             return self._render_smooth_board()
 
         return self._render_symbol_board()
+
+    def _uses_smooth_renderer(self) -> bool:
+        """Return whether the Braille sub-cell renderer should be active."""
+
+        return self.render_mode == RENDER_MODE_SMOOTH and not self.ascii_only
 
     def _render_symbol_board(self) -> Text:
         """Render the board as one terminal glyph per game cell."""
@@ -605,7 +632,7 @@ class SnakeGame(App):
     def _animation_progress(self) -> float:
         """Return how far the renderer is between the last and current step."""
 
-        if self.ascii_only or self.game_over or self.paused:
+        if not self._uses_smooth_renderer() or self.game_over or self.paused:
             return 1.0
 
         elapsed = time.monotonic() - self._animation_started_at
@@ -691,6 +718,27 @@ class SnakeGame(App):
                 if abs(pixel_center_col - center_col) <= half_size:
                     self._paint_pixel(pixels, pixel_row, pixel_col, cell)
 
+    def _paint_line(
+        self,
+        pixels: list[list[str | None]],
+        start: tuple[float, float],
+        end: tuple[float, float],
+        cell: str,
+        half_size: float,
+    ) -> None:
+        """Paint a thin continuous path between two logical positions."""
+
+        start_row, start_col = start
+        end_row, end_col = end
+        distance = max(abs(end_row - start_row), abs(end_col - start_col))
+        steps = max(1, int(distance * SUBPIXELS_PER_CELL * 2))
+
+        for step in range(steps + 1):
+            progress = step / steps
+            row = start_row + (end_row - start_row) * progress
+            col = start_col + (end_col - start_col) * progress
+            self._paint_square(pixels, row, col, cell, half_size)
+
     def _paint_smooth_snake(
         self,
         pixels: list[list[str | None]],
@@ -703,16 +751,26 @@ class SnakeGame(App):
         """Paint a snake at interpolated sub-cell coordinates."""
 
         positions = self._interpolated_snake(snake, previous_snake, progress)
-        for index in range(len(positions) - 1, -1, -1):
-            row, col = positions[index]
-            is_head = index == 0
-            self._paint_square(
+        if not positions:
+            return
+
+        for index in range(len(positions) - 1, 0, -1):
+            self._paint_line(
                 pixels,
-                row,
-                col,
-                head_cell if is_head else body_cell,
-                half_size=1.95 if is_head else 1.72,
+                positions[index],
+                positions[index - 1],
+                body_cell,
+                half_size=0.82,
             )
+
+        head_row, head_col = positions[0]
+        self._paint_square(
+            pixels,
+            head_row,
+            head_col,
+            head_cell,
+            half_size=1.28,
+        )
 
     def _render_smooth_board(self) -> Text:
         """Render the board with Braille sub-cells for smoother motion."""
@@ -725,7 +783,7 @@ class SnakeGame(App):
                 float(self.food.row),
                 float(self.food.col),
                 CELL_FOOD,
-                half_size=1.05,
+                half_size=0.92,
             )
 
         progress = self._animation_progress()
@@ -736,7 +794,7 @@ class SnakeGame(App):
                     float(pos.row),
                     float(pos.col),
                     CELL_DEAD,
-                    half_size=1.55,
+                    half_size=1.0,
                 )
 
             if self.alive1:
@@ -873,8 +931,9 @@ class SnakeGame(App):
         heading = Text()
         heading.append("uvpy.run Snake", style="bold #7dff9b")
         heading.append("  ")
+        render_label = RENDER_MODE_SMOOTH if self._uses_smooth_renderer() else RENDER_MODE_CLASSIC
         heading.append(
-            "two-player" if self.two_player else "single-player",
+            f"{'two-player' if self.two_player else 'single-player'} / {render_label}",
             style="dim",
         )
 
@@ -997,7 +1056,567 @@ class SnakeGame(App):
         self.action_restart()
 
 
-@click.command(help="Run a polished Textual Snake game in your terminal.")
+RGBColor = tuple[int, int, int]
+
+
+def rgb(hex_color: str) -> RGBColor:
+    """Convert a #rrggbb color into an RGB tuple."""
+
+    color = hex_color.lstrip("#")
+    return (
+        int(color[0:2], 16),
+        int(color[2:4], 16),
+        int(color[4:6], 16),
+    )
+
+
+KITTY_COLORS = {
+    "background": rgb("#07100c"),
+    "grid": rgb("#10241d"),
+    "food": rgb("#ffcc66"),
+    "food_core": rgb("#fff2a3"),
+    "head1": rgb("#7dff9b"),
+    "body1": rgb("#38d878"),
+    "head2": rgb("#7cc7ff"),
+    "body2": rgb("#4d8dff"),
+    "dead": rgb("#d45d5d"),
+    "eye": rgb("#07100c"),
+    "eye_glint": rgb("#f4fff8"),
+}
+
+
+class PixelBuffer:
+    """Small RGB drawing surface for Kitty graphics frames."""
+
+    def __init__(self, width: int, height: int, background: RGBColor):
+        self.width = width
+        self.height = height
+        self.data = bytearray(background * (width * height))
+
+    def blend_pixel(self, x: int, y: int, color: RGBColor, alpha: float = 1.0) -> None:
+        """Blend a single pixel, clipping silently outside the image."""
+
+        if x < 0 or x >= self.width or y < 0 or y >= self.height or alpha <= 0:
+            return
+
+        alpha = min(1.0, alpha)
+        index = (y * self.width + x) * 3
+        inverse = 1.0 - alpha
+        self.data[index] = int(self.data[index] * inverse + color[0] * alpha)
+        self.data[index + 1] = int(self.data[index + 1] * inverse + color[1] * alpha)
+        self.data[index + 2] = int(self.data[index + 2] * inverse + color[2] * alpha)
+
+    def draw_rect(self, x: int, y: int, width: int, height: int, color: RGBColor) -> None:
+        """Draw a clipped solid rectangle."""
+
+        start_x = max(0, x)
+        end_x = min(self.width, x + width)
+        start_y = max(0, y)
+        end_y = min(self.height, y + height)
+        for pixel_y in range(start_y, end_y):
+            row_start = (pixel_y * self.width + start_x) * 3
+            row_end = (pixel_y * self.width + end_x) * 3
+            self.data[row_start:row_end] = bytes(color) * (end_x - start_x)
+
+    def draw_circle(
+        self,
+        center_x: float,
+        center_y: float,
+        radius: float,
+        color: RGBColor,
+    ) -> None:
+        """Draw an anti-aliased filled circle."""
+
+        min_x = math.floor(center_x - radius - 1)
+        max_x = math.ceil(center_x + radius + 1)
+        min_y = math.floor(center_y - radius - 1)
+        max_y = math.ceil(center_y + radius + 1)
+
+        for y in range(min_y, max_y + 1):
+            for x in range(min_x, max_x + 1):
+                distance = math.hypot((x + 0.5) - center_x, (y + 0.5) - center_y)
+                alpha = radius + 0.55 - distance
+                if alpha > 0:
+                    self.blend_pixel(x, y, color, alpha)
+
+    def draw_line(
+        self,
+        start: tuple[float, float],
+        end: tuple[float, float],
+        radius: float,
+        color: RGBColor,
+    ) -> None:
+        """Draw a rounded thick line by stamping anti-aliased circles."""
+
+        start_x, start_y = start
+        end_x, end_y = end
+        distance = math.hypot(end_x - start_x, end_y - start_y)
+        steps = max(1, int(distance / max(1.0, radius * 0.45)))
+
+        for step in range(steps + 1):
+            progress = step / steps
+            x = start_x + (end_x - start_x) * progress
+            y = start_y + (end_y - start_y) * progress
+            self.draw_circle(x, y, radius, color)
+
+
+class KittySnakeRenderer:
+    """Render the snake board as RGB pixels for Kitty graphics."""
+
+    def __init__(
+        self,
+        width: int,
+        height: int,
+        cell_pixels: int = KITTY_CELL_PIXELS,
+    ):
+        self.width = width
+        self.height = height
+        self.cell_pixels = cell_pixels
+        self.pixel_width = width * cell_pixels
+        self.pixel_height = height * cell_pixels
+
+    def render(self, game: SnakeGame, progress: float) -> bytes:
+        """Return one RGB frame for the current game state."""
+
+        buffer = PixelBuffer(
+            self.pixel_width,
+            self.pixel_height,
+            KITTY_COLORS["background"],
+        )
+        self._draw_grid(buffer)
+
+        if game.food:
+            self._draw_food(buffer, game.food)
+
+        if game.two_player:
+            for pos in game.dead_bodies:
+                self._draw_cell_dot(buffer, pos, KITTY_COLORS["dead"], 0.28)
+
+            if game.alive1:
+                self._draw_snake(
+                    buffer,
+                    game,
+                    game.snake1,
+                    game._previous_snake1,
+                    game.direction1,
+                    KITTY_COLORS["body1"],
+                    KITTY_COLORS["head1"],
+                    progress,
+                )
+            if game.alive2:
+                self._draw_snake(
+                    buffer,
+                    game,
+                    game.snake2,
+                    game._previous_snake2,
+                    game.direction2,
+                    KITTY_COLORS["body2"],
+                    KITTY_COLORS["head2"],
+                    progress,
+                )
+        else:
+            self._draw_snake(
+                buffer,
+                game,
+                game.snake,
+                game._previous_snake,
+                game.direction,
+                KITTY_COLORS["body1"],
+                KITTY_COLORS["head1"],
+                progress,
+            )
+
+        return bytes(buffer.data)
+
+    def _draw_grid(self, buffer: PixelBuffer) -> None:
+        """Draw a restrained board grid into the pixel buffer."""
+
+        for col in range(self.width + 1):
+            x = col * self.cell_pixels
+            buffer.draw_rect(x, 0, 1, buffer.height, KITTY_COLORS["grid"])
+        for row in range(self.height + 1):
+            y = row * self.cell_pixels
+            buffer.draw_rect(0, y, buffer.width, 1, KITTY_COLORS["grid"])
+
+    def _center(self, row: float, col: float) -> tuple[float, float]:
+        """Convert a logical board position to pixel center coordinates."""
+
+        return (
+            (col + 0.5) * self.cell_pixels,
+            (row + 0.5) * self.cell_pixels,
+        )
+
+    def _draw_cell_dot(
+        self,
+        buffer: PixelBuffer,
+        position: Position,
+        color: RGBColor,
+        radius_ratio: float,
+    ) -> None:
+        """Draw a circular marker at an integer board position."""
+
+        center_x, center_y = self._center(float(position.row), float(position.col))
+        buffer.draw_circle(center_x, center_y, self.cell_pixels * radius_ratio, color)
+
+    def _draw_food(self, buffer: PixelBuffer, position: Position) -> None:
+        """Draw a glowing food pellet."""
+
+        center_x, center_y = self._center(float(position.row), float(position.col))
+        buffer.draw_circle(center_x, center_y, self.cell_pixels * 0.34, KITTY_COLORS["food"])
+        buffer.draw_circle(
+            center_x - self.cell_pixels * 0.08,
+            center_y - self.cell_pixels * 0.08,
+            self.cell_pixels * 0.14,
+            KITTY_COLORS["food_core"],
+        )
+
+    def _draw_snake(
+        self,
+        buffer: PixelBuffer,
+        game: SnakeGame,
+        snake: list[Position],
+        previous_snake: list[Position],
+        direction: Direction,
+        body_color: RGBColor,
+        head_color: RGBColor,
+        progress: float,
+    ) -> None:
+        """Draw a continuous rounded snake body and expressive head."""
+
+        positions = game._interpolated_snake(snake, previous_snake, progress)
+        if not positions:
+            return
+
+        pixel_positions = [self._center(row, col) for row, col in positions]
+        body_radius = self.cell_pixels * 0.27
+        for index in range(len(pixel_positions) - 1, 0, -1):
+            buffer.draw_line(
+                pixel_positions[index],
+                pixel_positions[index - 1],
+                body_radius,
+                body_color,
+            )
+
+        head_x, head_y = pixel_positions[0]
+        head_radius = self.cell_pixels * 0.38
+        buffer.draw_circle(head_x, head_y, head_radius, head_color)
+        self._draw_eyes(buffer, head_x, head_y, head_radius, direction)
+
+    def _draw_eyes(
+        self,
+        buffer: PixelBuffer,
+        head_x: float,
+        head_y: float,
+        head_radius: float,
+        direction: Direction,
+    ) -> None:
+        """Draw tiny directional eyes on the snake head."""
+
+        row_delta, col_delta = direction.value
+        forward_x = float(col_delta)
+        forward_y = float(row_delta)
+        side_x = -forward_y
+        side_y = forward_x
+        eye_forward = head_radius * 0.34
+        eye_side = head_radius * 0.42
+        eye_radius = max(1.4, head_radius * 0.17)
+        pupil_radius = max(0.8, eye_radius * 0.45)
+
+        for side in (-1, 1):
+            eye_x = head_x + forward_x * eye_forward + side_x * eye_side * side
+            eye_y = head_y + forward_y * eye_forward + side_y * eye_side * side
+            buffer.draw_circle(eye_x, eye_y, eye_radius, KITTY_COLORS["eye_glint"])
+            buffer.draw_circle(eye_x, eye_y, pupil_radius, KITTY_COLORS["eye"])
+
+
+def kitty_graphics_chunks(
+    rgb_data: bytes,
+    image_width: int,
+    image_height: int,
+    columns: int,
+    rows: int,
+    image_id: int = KITTY_IMAGE_ID,
+    placement_id: int = KITTY_PLACEMENT_ID,
+) -> list[str]:
+    """Return chunked Kitty graphics commands for one RGB frame."""
+
+    compressed = zlib.compress(rgb_data, level=1)
+    payload = base64.standard_b64encode(compressed).decode("ascii")
+    chunks = [
+        payload[index:index + KITTY_CHUNK_SIZE]
+        for index in range(0, len(payload), KITTY_CHUNK_SIZE)
+    ] or [""]
+    commands: list[str] = []
+
+    for index, chunk in enumerate(chunks):
+        more = 0 if index == len(chunks) - 1 else 1
+        if index == 0:
+            control = (
+                "a=T,f=24,o=z,"
+                f"s={image_width},v={image_height},"
+                f"i={image_id},p={placement_id},"
+                f"c={columns},r={rows},C=1,q=2,m={more}"
+            )
+        else:
+            control = f"q=2,m={more}"
+        commands.append(f"\033_G{control};{chunk}\033\\")
+
+    return commands
+
+
+class KittySnakeGame:
+    """Raw-terminal Snake runner using Kitty graphics for pixel animation."""
+
+    def __init__(
+        self,
+        width: int,
+        height: int,
+        speed: int,
+        two_player: bool,
+    ):
+        self.game = SnakeGame(
+            width,
+            height,
+            speed,
+            two_player,
+            ascii_only=False,
+            render_mode=RENDER_MODE_CLASSIC,
+        )
+        self.renderer = KittySnakeRenderer(width, height)
+        self.width = width
+        self.height = height
+        self.two_player = two_player
+        self.input_buffer = b""
+        self.running = True
+        self.next_tick = time.monotonic() + self.game._logic_interval
+
+    def run(self) -> None:
+        """Run the raw terminal game loop."""
+
+        if not sys.stdin.isatty() or not sys.stdout.isatty():
+            raise click.ClickException("--mode-kitty requires an interactive terminal.")
+
+        old_settings = termios.tcgetattr(sys.stdin)
+        try:
+            tty.setcbreak(sys.stdin.fileno())
+            sys.stdout.write("\033[?1049h\033[?25l\033[2J")
+            sys.stdout.flush()
+            self._run_loop()
+        finally:
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+            sys.stdout.write(
+                f"\033_Ga=d,d=I,i={KITTY_IMAGE_ID},q=2;\033\\"
+                "\033[2J\033[?25h\033[?1049l"
+            )
+            sys.stdout.flush()
+
+    def _run_loop(self) -> None:
+        """Drive input, logic, and 60 FPS rendering."""
+
+        frame_interval = 1 / KITTY_RENDER_FPS
+        next_frame = time.monotonic()
+
+        while self.running:
+            now = time.monotonic()
+            self._handle_input(now)
+
+            if not self.game.paused and not self.game.game_over:
+                while now >= self.next_tick:
+                    self._advance_game()
+                    self.next_tick += self.game._logic_interval
+                    if now - self.next_tick > self.game._logic_interval:
+                        self.next_tick = now + self.game._logic_interval
+
+            if now >= next_frame:
+                self._render_frame()
+                next_frame += frame_interval
+                if next_frame < now:
+                    next_frame = now + frame_interval
+
+            sleep_until = min(self.next_tick, next_frame)
+            time.sleep(max(0.001, min(0.01, sleep_until - time.monotonic())))
+
+    def _advance_game(self) -> None:
+        """Advance the shared game logic by one step."""
+
+        self.game._begin_step_animation()
+        self.game.ticks += 1
+        if self.game.two_player:
+            self.game._update_two_player()
+        else:
+            self.game._update_single_player()
+
+    def _animation_progress(self) -> float:
+        """Return current pixel interpolation progress."""
+
+        if self.game.paused or self.game.game_over:
+            return 1.0
+        elapsed = time.monotonic() - self.game._animation_started_at
+        return min(1.0, max(0.0, elapsed / self.game._logic_interval))
+
+    def _handle_input(self, now: float) -> None:
+        """Read and apply all currently available keyboard input."""
+
+        fd = sys.stdin.fileno()
+        while select.select([fd], [], [], 0)[0]:
+            self.input_buffer += os.read(fd, 32)
+
+        for key in self._consume_keys():
+            if key in {"q", "\x03"}:
+                self.running = False
+                return
+            if key == "space":
+                self.game.action_toggle_pause()
+                self.next_tick = now + self.game._logic_interval
+                continue
+            if key == "r":
+                self.game.action_restart()
+                self.next_tick = now + self.game._logic_interval
+                continue
+            self._queue_movement(key)
+
+    def _consume_keys(self) -> list[str]:
+        """Parse raw terminal bytes into normalized key names."""
+
+        keys: list[str] = []
+        while self.input_buffer:
+            if self.input_buffer.startswith(b"\x1b["):
+                if len(self.input_buffer) < 3:
+                    break
+                arrow_key = {
+                    b"A": "up",
+                    b"B": "down",
+                    b"C": "right",
+                    b"D": "left",
+                }.get(self.input_buffer[2:3])
+                self.input_buffer = self.input_buffer[3:]
+                if arrow_key:
+                    keys.append(arrow_key)
+                continue
+
+            byte = self.input_buffer[:1]
+            self.input_buffer = self.input_buffer[1:]
+            if byte == b" ":
+                keys.append("space")
+            elif byte in {b"q", b"Q"}:
+                keys.append("q")
+            elif byte in {b"r", b"R"}:
+                keys.append("r")
+            elif byte == b"\x03":
+                keys.append("\x03")
+            else:
+                character = byte.decode("ascii", errors="ignore").lower()
+                if character in {"w", "a", "s", "d"}:
+                    keys.append(character)
+
+        return keys
+
+    def _queue_movement(self, key: str) -> None:
+        """Map normalized keys to the shared game direction queue."""
+
+        if self.game.two_player:
+            if self.game.alive1:
+                player1_keys = {
+                    "w": Direction.UP,
+                    "s": Direction.DOWN,
+                    "a": Direction.LEFT,
+                    "d": Direction.RIGHT,
+                }
+                if key in player1_keys:
+                    self.game._queue_direction(player1_keys[key], player=1)
+            if self.game.alive2:
+                player2_keys = {
+                    "up": Direction.UP,
+                    "down": Direction.DOWN,
+                    "left": Direction.LEFT,
+                    "right": Direction.RIGHT,
+                }
+                if key in player2_keys:
+                    self.game._queue_direction(player2_keys[key], player=2)
+            return
+
+        movement_keys = {
+            "w": Direction.UP,
+            "up": Direction.UP,
+            "s": Direction.DOWN,
+            "down": Direction.DOWN,
+            "a": Direction.LEFT,
+            "left": Direction.LEFT,
+            "d": Direction.RIGHT,
+            "right": Direction.RIGHT,
+        }
+        if key in movement_keys:
+            self.game._queue_direction(movement_keys[key])
+
+    def _render_frame(self) -> None:
+        """Render one Kitty graphics frame plus text HUD."""
+
+        progress = self._animation_progress()
+        rgb_data = self.renderer.render(self.game, progress)
+        columns = self.width * 2
+        rows = self.height
+        commands = kitty_graphics_chunks(
+            rgb_data,
+            self.renderer.pixel_width,
+            self.renderer.pixel_height,
+            columns,
+            rows,
+        )
+
+        sys.stdout.write("\033[H\033[2K")
+        sys.stdout.write("\033[1;38;2;125;255;155muvpy.run Snake\033[0m")
+        sys.stdout.write("  \033[2mkitty pixel mode\033[0m")
+        sys.stdout.write("\033[2;1H\033[2K")
+        sys.stdout.write(self._score_line())
+        sys.stdout.write("\033[3;1H")
+        for command in commands:
+            sys.stdout.write(command)
+        sys.stdout.write(f"\033[{self.height + 4};1H\033[2K")
+        sys.stdout.write(self._message_line())
+        sys.stdout.write(f"\033[{self.height + 5};1H\033[2K")
+        sys.stdout.write(self._controls_line())
+        sys.stdout.flush()
+
+    def _score_line(self) -> str:
+        """Return a terminal-colored score line."""
+
+        if self.game.two_player:
+            p1_state = "alive" if self.game.alive1 else "out"
+            p2_state = "alive" if self.game.alive2 else "out"
+            return (
+                f"\033[38;2;125;255;155mP1 {self.game.score1} ({p1_state})\033[0m  "
+                f"\033[38;2;124;199;255mP2 {self.game.score2} ({p2_state})\033[0m  "
+                f"\033[38;2;255;204;102mbest {self.game.high_score}\033[0m  "
+                f"\033[2mspeed {self.game.speed}/15\033[0m"
+            )
+        return (
+            f"\033[38;2;125;255;155mscore {self.game.score}\033[0m  "
+            f"\033[38;2;255;204;102mbest {self.game.high_score}\033[0m  "
+            f"\033[2mfood {self.game.food_eaten}  speed {self.game.speed}/15\033[0m"
+        )
+
+    def _message_line(self) -> str:
+        """Return the current game message with simple ANSI styling."""
+
+        if self.game.game_over and not self.game.won:
+            color = "255;107;107"
+        elif self.game.paused:
+            color = "255;204;102"
+        else:
+            color = "219;255;233"
+        return f"\033[38;2;{color}m{self.game.last_message}\033[0m"
+
+    def _controls_line(self) -> str:
+        """Return mode-specific controls for the raw terminal HUD."""
+
+        if self.game.two_player:
+            controls = "P1 WASD  P2 arrows  Space pause  R restart  Q quit"
+        else:
+            controls = "WASD or arrows move  Space pause  R restart  Q quit"
+        return f"\033[2m{controls}\033[0m"
+
+
+@click.command(help="Run a polished Snake game in your terminal.")
 @click.option(
     "--width",
     "-w",
@@ -1034,12 +1653,30 @@ class SnakeGame(App):
     is_flag=True,
     help="Use ASCII-safe board glyphs for older terminals.",
 )
+@click.option(
+    "--mode-classic",
+    is_flag=True,
+    help="Use the original one-cell terminal renderer.",
+)
+@click.option(
+    "--mode-smooth",
+    is_flag=True,
+    help="Use the 60 FPS Braille sub-cell renderer (default).",
+)
+@click.option(
+    "--mode-kitty",
+    is_flag=True,
+    help="Use Kitty graphics for true pixel animation.",
+)
 def main(
     width: int,
     height: int,
     speed: int,
     two_player: bool,
     ascii_only: bool,
+    mode_classic: bool,
+    mode_smooth: bool,
+    mode_kitty: bool,
 ) -> None:
     """
     Classic Snake in the terminal.
@@ -1048,7 +1685,20 @@ def main(
     other player in two-player mode.
     """
 
-    app = SnakeGame(width, height, speed, two_player, ascii_only)
+    selected_modes = [mode_classic, mode_smooth, mode_kitty]
+    if sum(1 for selected in selected_modes if selected) > 1:
+        raise click.UsageError(
+            "Choose only one of --mode-classic, --mode-smooth, or --mode-kitty."
+        )
+
+    if mode_kitty:
+        if ascii_only:
+            raise click.UsageError("--ascii cannot be combined with --mode-kitty.")
+        KittySnakeGame(width, height, speed, two_player).run()
+        return
+
+    render_mode = RENDER_MODE_CLASSIC if mode_classic else RENDER_MODE_SMOOTH
+    app = SnakeGame(width, height, speed, two_player, ascii_only, render_mode)
     app.run()
 
 

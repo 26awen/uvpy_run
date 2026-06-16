@@ -489,6 +489,46 @@ class ToolRiskCoherenceTests(unittest.TestCase):
             any(0x2800 <= ord(character) <= 0x28FF for character in rendered.plain)
         )
 
+    def test_snake_classic_mode_preserves_original_glyph_renderer(self):
+        tool = load_tool_module("snake.py")
+        game = tool.SnakeGame(
+            width=10,
+            height=8,
+            speed=1,
+            render_mode=tool.RENDER_MODE_CLASSIC,
+        )
+
+        rendered = game._render_board().plain
+
+        self.assertIn("@", rendered)
+        self.assertIn("#", rendered)
+        self.assertNotIn("⣿", rendered)
+
+    def test_snake_kitty_renderer_builds_rgb_frame_and_escape_chunks(self):
+        tool = load_tool_module("snake.py")
+        game = tool.SnakeGame(
+            width=10,
+            height=8,
+            speed=1,
+            render_mode=tool.RENDER_MODE_CLASSIC,
+        )
+        renderer = tool.KittySnakeRenderer(width=10, height=8, cell_pixels=4)
+
+        frame = renderer.render(game, progress=1.0)
+        chunks = tool.kitty_graphics_chunks(
+            frame,
+            renderer.pixel_width,
+            renderer.pixel_height,
+            columns=20,
+            rows=8,
+        )
+
+        self.assertEqual(len(frame), 10 * 4 * 8 * 4 * 3)
+        self.assertGreater(len(set(frame)), 1)
+        self.assertTrue(chunks[0].startswith("\x1b_Ga=T,f=24,o=z,s=40,v=32"))
+        self.assertIn("c=20,r=8", chunks[0])
+        self.assertTrue(chunks[-1].endswith("\x1b\\"))
+
     def test_image_tools_return_nonzero_when_processing_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             text_file = Path(tmp) / "not-an-image.txt"
