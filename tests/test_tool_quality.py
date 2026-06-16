@@ -120,6 +120,55 @@ class ToolRiskCoherenceTests(unittest.TestCase):
         self.assertIn("secrets.SystemRandom", source)
         self.assertNotIn("import random", source)
 
+    def test_password_generator_respects_requested_character_policy(self):
+        tool = load_tool_module("passwordgen.py")
+
+        password = tool.generate_password(
+            length=4,
+            include_symbols=True,
+            exclude_ambiguous=True,
+        )
+
+        self.assertEqual(len(password), 4)
+        self.assertRegex(password, r"[a-km-np-z]")
+        self.assertRegex(password, r"[A-HJ-NP-Z]")
+        self.assertRegex(password, r"[2-9]")
+        self.assertTrue(
+            any(char in tool.build_character_sets()["symbols"] for char in password)
+        )
+        self.assertFalse(any(char in "loIO01|`" for char in password))
+
+        with self.assertRaises(ValueError):
+            tool.generate_password(length=2, include_symbols=True)
+
+    def test_password_generator_quiet_output_is_raw_passwords(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(STATIC_PYFILES_ROOT / "passwordgen.py"),
+                "--quiet",
+                "--count",
+                "2",
+                "--length",
+                "8",
+                "--no-symbols",
+            ],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+
+        lines = result.stdout.strip().splitlines()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stderr, "")
+        self.assertEqual(len(lines), 2)
+        self.assertTrue(all(len(line) == 8 for line in lines))
+        self.assertTrue(all(line.isalnum() for line in lines))
+        self.assertFalse(any(char in "loIO01" for line in lines for char in line))
+        self.assertNotIn("Password Generator", result.stdout)
+
     def test_secret_generator_returns_expected_encodings(self):
         tool = load_tool_module("flask_secret.py")
 
