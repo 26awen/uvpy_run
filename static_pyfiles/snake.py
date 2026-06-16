@@ -137,19 +137,19 @@ KITTY_CHUNK_SIZE = 4096
 FANCY_POWERUP_MOON_GATE = "moon_gate"
 FANCY_POWERUP_TAIL_SHIELD = "tail_shield"
 FANCY_POWERUP_SLOW_CHARM = "slow_charm"
-FANCY_POWERUP_TAIL_TRIM = "tail_trim"
+FANCY_POWERUP_GHOST_BITE = "ghost_bite"
 FANCY_POWERUP_TYPES = (
     FANCY_POWERUP_MOON_GATE,
     FANCY_POWERUP_TAIL_SHIELD,
     FANCY_POWERUP_SLOW_CHARM,
-    FANCY_POWERUP_TAIL_TRIM,
+    FANCY_POWERUP_GHOST_BITE,
 )
 FANCY_POWERUP_TTL = 72
 FANCY_POWERUP_SPAWN_FOOD_INTERVAL = 2
 FANCY_MOON_GATE_TICKS = 90
 FANCY_TAIL_SHIELD_TICKS = 90
 FANCY_SLOW_CHARM_TICKS = 65
-FANCY_TAIL_TRIM_SEGMENTS = 3
+FANCY_GHOST_BITE_TICKS = 55
 FANCY_EAT_WAVE_TICKS = 18
 BRAILLE_DOT_BITS = {
     (0, 0): 0x01,
@@ -1110,8 +1110,8 @@ KITTY_COLORS = {
     "tail_shield_core": rgb("#e2fdff"),
     "slow_charm": rgb("#a7ffc0"),
     "slow_charm_core": rgb("#f4fff8"),
-    "tail_trim": rgb("#ff8a66"),
-    "tail_trim_core": rgb("#ffe0b8"),
+    "ghost_bite": rgb("#e8f2ff"),
+    "ghost_bite_core": rgb("#b88cff"),
     "prism_red": rgb("#ff6b9d"),
     "prism_gold": rgb("#ffcc66"),
     "prism_green": rgb("#7dff9b"),
@@ -1155,10 +1155,11 @@ class FancyState:
         self.foods_since_powerup = 0
         self.eat_wave_ticks = 0
         self.moon_gate_ticks = 0
-        self.moon_gates: tuple[Position, Position] | None = None
+        self.moon_gates: tuple[Position, ...] | None = None
         self.tail_shield_ticks = 0
         self.tail_shield_charges = 0
         self.slow_charm_ticks = 0
+        self.ghost_bite_ticks = 0
         self.pulse = 0.0
 
     def reset(self) -> None:
@@ -1173,6 +1174,7 @@ class FancyState:
         self.tail_shield_ticks = 0
         self.tail_shield_charges = 0
         self.slow_charm_ticks = 0
+        self.ghost_bite_ticks = 0
         self.pulse = 0.0
 
     def update_frame(self, dt: float) -> None:
@@ -1212,6 +1214,9 @@ class FancyState:
 
         if self.slow_charm_ticks > 0:
             self.slow_charm_ticks -= 1
+
+        if self.ghost_bite_ticks > 0:
+            self.ghost_bite_ticks -= 1
 
     def on_food_eaten(self, game: SnakeGame, position: Position) -> None:
         """Handle fancy scoring, particles, and possible powerup spawn."""
@@ -1269,69 +1274,94 @@ class FancyState:
         self.powerup = None
 
         if kind == FANCY_POWERUP_MOON_GATE:
-            self.activate_moon_gate(game)
-            game.last_message = "Moon Gate opened. Slip through the violet doors."
+            gate_count = self.activate_moon_gate(game)
+            if gate_count:
+                game.last_message = f"Moon Gate network opened. {gate_count} gates are linked."
+            else:
+                game.last_message = "Moon Gate fizzled. The board is too crowded."
         elif kind == FANCY_POWERUP_TAIL_SHIELD:
             self.tail_shield_ticks = FANCY_TAIL_SHIELD_TICKS
             self.tail_shield_charges = 1
             game.last_message = "Tail Shield armed. Your next self-hit is safe."
         elif kind == FANCY_POWERUP_SLOW_CHARM:
-            self.slow_charm_ticks = FANCY_SLOW_CHARM_TICKS
+            self.slow_charm_ticks = self.slow_charm_duration(game.speed)
             game.last_message = "Slow Charm active. The board takes a breath."
-        elif kind == FANCY_POWERUP_TAIL_TRIM:
-            trimmed = self.trim_tail(game)
-            if trimmed:
-                game.last_message = f"Tail Trim clipped {trimmed} segments."
-            else:
-                game.last_message = "Tail Trim sparkled. Nothing extra to clip yet."
+        elif kind == FANCY_POWERUP_GHOST_BITE:
+            self.ghost_bite_ticks = FANCY_GHOST_BITE_TICKS
+            game.last_message = "Ghost Bite active. Your body is mist for a moment."
 
         self.add_burst(position, self.powerup_color(kind), count=20, speed=5.4)
         return True
 
-    def trim_tail(self, game: SnakeGame) -> int:
-        """Clip a few tail segments without shrinking below the starting length."""
+    def activate_moon_gate(self, game: SnakeGame) -> int:
+        """Create a temporary ring of teleport gates scaled to the board size."""
 
-        removable = max(0, len(game.snake) - STARTING_LENGTH)
-        trim_count = min(FANCY_TAIL_TRIM_SEGMENTS, removable)
-        if trim_count <= 0:
+        gates = self.random_open_positions(game, self.moon_gate_count())
+        if len(gates) < 2:
             return 0
 
-        clipped = game.snake[-trim_count:]
-        del game.snake[-trim_count:]
-        for position in clipped:
-            self.add_burst(position, KITTY_COLORS["tail_trim"], count=8, speed=3.6)
-        return trim_count
-
-    def activate_moon_gate(self, game: SnakeGame) -> None:
-        """Create a temporary pair of teleport gates."""
-
-        first = self.random_open_position(game)
-        if first is None:
-            return
-
-        original_powerup = self.powerup
-        self.powerup = FancyPowerup(FANCY_POWERUP_MOON_GATE, first)
-        second = self.random_open_position(game)
-        self.powerup = original_powerup
-        if second is None:
-            return
-
-        self.moon_gates = (first, second)
+        self.moon_gates = gates
         self.moon_gate_ticks = FANCY_MOON_GATE_TICKS
-        self.add_burst(first, KITTY_COLORS["moon_gate"], count=18, speed=3.2)
-        self.add_burst(second, KITTY_COLORS["moon_gate_core"], count=18, speed=3.2)
+        for index, gate in enumerate(gates):
+            color = (
+                KITTY_COLORS["moon_gate"]
+                if index % 2 == 0
+                else KITTY_COLORS["moon_gate_core"]
+            )
+            self.add_burst(gate, color, count=14, speed=3.2)
+        return len(gates)
+
+    def moon_gate_count(self) -> int:
+        """Return how many gates the current board can comfortably support."""
+
+        area = self.width * self.height
+        if area < 180:
+            return 2
+        if area < 420:
+            return 4
+        return 6
+
+    def random_open_positions(self, game: SnakeGame, count: int) -> tuple[Position, ...]:
+        """Return several random open positions without repeating a cell."""
+
+        blocked = set(game.snake)
+        if game.food:
+            blocked.add(game.food)
+        if self.moon_gates:
+            blocked.update(self.moon_gates)
+        if self.powerup:
+            blocked.add(self.powerup.position)
+
+        open_positions = [
+            Position(row, col)
+            for row in range(self.height)
+            for col in range(self.width)
+            if Position(row, col) not in blocked
+        ]
+        self.rng.shuffle(open_positions)
+        return tuple(open_positions[:count])
 
     def teleport_target(self, position: Position) -> Position:
         """Return the paired Moon Gate destination for a position."""
 
         if self.moon_gates is None:
             return position
-        first, second = self.moon_gates
-        if position == first:
-            return second
-        if position == second:
-            return first
+        if position in self.moon_gates:
+            index = self.moon_gates.index(position)
+            return self.moon_gates[(index + 1) % len(self.moon_gates)]
         return position
+
+    def slow_charm_duration(self, speed: int) -> int:
+        """Return a shorter Slow Charm duration at high base speed."""
+
+        speed_ratio = (max(1, min(15, speed)) - 1) / 14
+        return max(42, round(FANCY_SLOW_CHARM_TICKS - speed_ratio * 20))
+
+    def slow_charm_multiplier(self, speed: int) -> float:
+        """Return a stronger Slow Charm slow-down at high base speed."""
+
+        speed_ratio = (max(1, min(15, speed)) - 1) / 14
+        return 1.18 + speed_ratio * 0.34
 
     def powerup_color(self, kind: str) -> RGBColor:
         """Return the primary display color for a fancy powerup."""
@@ -1342,7 +1372,7 @@ class FancyState:
             return KITTY_COLORS["tail_shield"]
         if kind == FANCY_POWERUP_SLOW_CHARM:
             return KITTY_COLORS["slow_charm"]
-        return KITTY_COLORS["tail_trim"]
+        return KITTY_COLORS["ghost_bite"]
 
     def add_burst(
         self,
@@ -1668,20 +1698,42 @@ class KittySnakeRenderer:
                 self._center(float(gate.row), float(gate.col))
                 for gate in fancy_state.moon_gates
             ]
-            if len(gate_centers) == 2:
-                buffer.draw_line(
-                    gate_centers[0],
-                    gate_centers[1],
-                    self.cell_pixels * 0.05,
+            if len(gate_centers) >= 2:
+                line_colors = [
                     KITTY_COLORS["moon_gate"],
-                    opacity=0.28 + pulse * 0.12,
-                )
+                    KITTY_COLORS["moon_gate_core"],
+                    KITTY_COLORS["prism_violet"],
+                ]
+                for index, center in enumerate(gate_centers):
+                    next_center = gate_centers[(index + 1) % len(gate_centers)]
+                    color = line_colors[index % len(line_colors)]
+                    buffer.draw_line(
+                        center,
+                        next_center,
+                        self.cell_pixels * 0.035,
+                        color,
+                        opacity=0.2 + pulse * 0.1,
+                    )
+
             for index, gate in enumerate(fancy_state.moon_gates):
                 center_x, center_y = self._center(float(gate.row), float(gate.col))
                 color = (
                     KITTY_COLORS["moon_gate"]
-                    if index == 0
+                    if index % 2 == 0
                     else KITTY_COLORS["moon_gate_core"]
+                )
+                buffer.draw_line(
+                    (
+                        center_x - self.cell_pixels * 0.33,
+                        center_y,
+                    ),
+                    (
+                        center_x + self.cell_pixels * 0.33,
+                        center_y,
+                    ),
+                    self.cell_pixels * 0.04,
+                    KITTY_COLORS["background"],
+                    opacity=0.65,
                 )
                 buffer.draw_circle(
                     center_x,
@@ -1772,27 +1824,29 @@ class KittySnakeRenderer:
                 KITTY_COLORS["slow_charm_core"],
                 opacity=0.82,
             )
-        elif powerup.kind == FANCY_POWERUP_TAIL_TRIM:
-            blade = self.cell_pixels * (0.38 + pulse * 0.04)
-            buffer.draw_line(
-                (center_x - blade, center_y - blade * 0.55),
-                (center_x + blade, center_y + blade * 0.55),
-                self.cell_pixels * 0.1,
-                KITTY_COLORS["tail_trim"],
-            )
-            buffer.draw_line(
-                (center_x - blade, center_y + blade * 0.55),
-                (center_x + blade, center_y - blade * 0.55),
-                self.cell_pixels * 0.1,
-                KITTY_COLORS["tail_trim_core"],
+        elif powerup.kind == FANCY_POWERUP_GHOST_BITE:
+            buffer.draw_circle(
+                center_x,
+                center_y,
+                self.cell_pixels * (0.42 + pulse * 0.05),
+                KITTY_COLORS["ghost_bite"],
+                opacity=0.82,
             )
             buffer.draw_circle(
-                center_x - self.cell_pixels * 0.24,
-                center_y,
-                self.cell_pixels * 0.11,
-                KITTY_COLORS["tail_trim_core"],
+                center_x + self.cell_pixels * 0.12,
+                center_y - self.cell_pixels * 0.02,
+                self.cell_pixels * 0.32,
+                KITTY_COLORS["background"],
                 opacity=0.9,
             )
+            for tooth_offset in (-0.11, 0.12):
+                buffer.draw_diamond(
+                    center_x - self.cell_pixels * 0.12,
+                    center_y + self.cell_pixels * tooth_offset,
+                    self.cell_pixels * 0.08,
+                    KITTY_COLORS["ghost_bite_core"],
+                    opacity=0.92,
+                )
 
     def _draw_snake(
         self,
@@ -1827,6 +1881,8 @@ class KittySnakeRenderer:
         self._draw_tapered_path(buffer, smooth_path, body_color)
         self._draw_tapered_highlight(buffer, smooth_path, highlight_color)
         if fancy_state is not None:
+            if fancy_state.ghost_bite_ticks > 0:
+                self._draw_ghost_bite_body(buffer, smooth_path, fancy_state)
             if fancy_state.slow_charm_ticks > 0:
                 self._draw_slow_charm_body(buffer, smooth_path, fancy_state)
             if fancy_state.tail_shield_charges > 0 or fancy_state.tail_shield_ticks > 0:
@@ -1952,6 +2008,43 @@ class KittySnakeRenderer:
                 x = start_x + (end_x - start_x) * segment_progress + offset[0]
                 y = start_y + (end_y - start_y) * segment_progress + offset[1]
                 buffer.draw_circle(x, y, radius, color, opacity)
+
+            traveled += segment_length
+
+    def _draw_ghost_bite_body(
+        self,
+        buffer: PixelBuffer,
+        path: list[tuple[float, float]],
+        fancy_state: FancyState,
+    ) -> None:
+        """Wash the snake body with a pale aura while Ghost Bite is active."""
+
+        if len(path) < 2:
+            return
+
+        total_length = max(1.0, self._path_length(path))
+        traveled = 0.0
+        flicker = 0.5 + 0.5 * math.sin(fancy_state.pulse * 3.4)
+
+        for index in range(1, len(path)):
+            start_x, start_y = path[index - 1]
+            end_x, end_y = path[index]
+            segment_length = math.hypot(end_x - start_x, end_y - start_y)
+            steps = max(1, int(segment_length / max(1.0, self.cell_pixels * 0.16)))
+
+            for step in range(steps + 1):
+                segment_progress = step / steps
+                distance = traveled + segment_length * segment_progress
+                path_progress = min(1.0, distance / total_length)
+                x = start_x + (end_x - start_x) * segment_progress
+                y = start_y + (end_y - start_y) * segment_progress
+                buffer.draw_circle(
+                    x,
+                    y,
+                    self._body_radius(path_progress) * (0.9 + flicker * 0.18),
+                    KITTY_COLORS["ghost_bite"],
+                    opacity=0.22 + flicker * 0.1,
+                )
 
             traveled += segment_length
 
@@ -2318,7 +2411,9 @@ class KittySnakeGame:
         """Return the current game tick interval, including fancy modifiers."""
 
         if self.fancy_state is not None and self.fancy_state.slow_charm_ticks > 0:
-            return self.game._logic_interval * 1.32
+            return self.game._logic_interval * self.fancy_state.slow_charm_multiplier(
+                self.game.speed
+            )
         return self.game._logic_interval
 
     def _update_single_player_fancy(self) -> None:
@@ -2358,6 +2453,21 @@ class KittySnakeGame:
         )
 
         if collision_index is not None:
+            if fancy_state.ghost_bite_ticks > 0:
+                self.game.snake.insert(0, new_head)
+                if will_grow:
+                    self.game.score += POINTS_PER_FOOD
+                    self.game.high_score = max(self.game.high_score, self.game.score)
+                    self.game.food_eaten += 1
+                    fancy_state.on_food_eaten(self.game, new_head)
+                    self._generate_fancy_food()
+                else:
+                    self.game.snake.pop()
+                self.game.last_message = "Ghost Bite phased through your body."
+                fancy_state.add_burst(new_head, KITTY_COLORS["ghost_bite"], count=18, speed=4.0)
+                fancy_state.maybe_activate_powerup(self.game)
+                return
+
             if fancy_state.tail_shield_charges <= 0:
                 self.game._finish_game("Tail collision. Press R and try a wider turn.")
                 return
@@ -2415,7 +2525,7 @@ class KittySnakeGame:
         if self.game.paused or self.game.game_over:
             return 1.0
         elapsed = time.monotonic() - self.game._animation_started_at
-        return min(1.0, max(0.0, elapsed / self.game._logic_interval))
+        return min(1.0, max(0.0, elapsed / self._logic_interval()))
 
     def _handle_input(self, now: float) -> None:
         """Read and apply all currently available keyboard input."""
@@ -2574,8 +2684,10 @@ class KittySnakeGame:
             statuses.append("shield")
         if fancy_state.slow_charm_ticks > 0:
             statuses.append(f"slow {fancy_state.slow_charm_ticks}")
+        if fancy_state.ghost_bite_ticks > 0:
+            statuses.append(f"ghost {fancy_state.ghost_bite_ticks}")
         if fancy_state.moon_gates:
-            statuses.append("moon gate")
+            statuses.append(f"moon gate x{len(fancy_state.moon_gates)}")
 
         if not statuses:
             return ""

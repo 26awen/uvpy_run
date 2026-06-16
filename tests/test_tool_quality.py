@@ -802,11 +802,16 @@ class ToolRiskCoherenceTests(unittest.TestCase):
         renderer = tool.KittySnakeRenderer(width=10, height=8, cell_pixels=4)
         state = tool.FancyState(width=10, height=8, rng=random.Random(5))
         state.powerup = tool.FancyPowerup(
-            tool.FANCY_POWERUP_SLOW_CHARM,
+            tool.FANCY_POWERUP_GHOST_BITE,
             tool.Position(3, 3),
         )
-        state.moon_gates = (tool.Position(1, 1), tool.Position(6, 8))
+        state.moon_gates = (
+            tool.Position(1, 1),
+            tool.Position(3, 8),
+            tool.Position(6, 8),
+        )
         state.slow_charm_ticks = 5
+        state.ghost_bite_ticks = 5
         state.add_burst(tool.Position(4, 4), tool.KITTY_COLORS["prism_blue"], 4, 2.0)
 
         frame = renderer.render(game, progress=1.0, fancy_state=state)
@@ -816,37 +821,51 @@ class ToolRiskCoherenceTests(unittest.TestCase):
 
     def test_snake_fancy_slow_charm_slows_game_temporarily(self):
         tool = load_tool_module("snake.py")
-        runner = tool.KittySnakeGame(width=10, height=8, speed=10, two_player=False, fancy=True)
-        runner.fancy_state.powerup = tool.FancyPowerup(
-            tool.FANCY_POWERUP_SLOW_CHARM,
-            runner.game.snake[0],
+        slow_runner = tool.KittySnakeGame(
+            width=10,
+            height=8,
+            speed=1,
+            two_player=False,
+            fancy=True,
         )
-        base_interval = runner.game._logic_interval
+        fast_runner = tool.KittySnakeGame(
+            width=10,
+            height=8,
+            speed=15,
+            two_player=False,
+            fancy=True,
+        )
+        slow_runner.fancy_state.powerup = tool.FancyPowerup(
+            tool.FANCY_POWERUP_SLOW_CHARM,
+            slow_runner.game.snake[0],
+        )
+        fast_runner.fancy_state.powerup = tool.FancyPowerup(
+            tool.FANCY_POWERUP_SLOW_CHARM,
+            fast_runner.game.snake[0],
+        )
 
-        self.assertTrue(runner.fancy_state.maybe_activate_powerup(runner.game))
+        self.assertTrue(slow_runner.fancy_state.maybe_activate_powerup(slow_runner.game))
+        self.assertTrue(fast_runner.fancy_state.maybe_activate_powerup(fast_runner.game))
 
-        self.assertEqual(runner.fancy_state.powerup, None)
-        self.assertGreater(runner._logic_interval(), base_interval)
-        self.assertIn("Slow Charm", runner.game.last_message)
+        slow_multiplier = slow_runner._logic_interval() / slow_runner.game._logic_interval
+        fast_multiplier = fast_runner._logic_interval() / fast_runner.game._logic_interval
+        self.assertGreater(fast_multiplier, slow_multiplier)
+        self.assertLess(
+            fast_runner.fancy_state.slow_charm_ticks,
+            slow_runner.fancy_state.slow_charm_ticks,
+        )
+        self.assertIn("Slow Charm", fast_runner.game.last_message)
 
-    def test_snake_fancy_tail_trim_clips_extra_segments(self):
+    def test_snake_fancy_ghost_bite_activates_body_phase(self):
         tool = load_tool_module("snake.py")
         game = tool.SnakeGame(width=10, height=8, speed=1)
-        game.snake = [
-            tool.Position(2, 5),
-            tool.Position(2, 4),
-            tool.Position(2, 3),
-            tool.Position(2, 2),
-            tool.Position(2, 1),
-            tool.Position(2, 0),
-        ]
         state = tool.FancyState(width=10, height=8, rng=random.Random(6))
-        state.powerup = tool.FancyPowerup(tool.FANCY_POWERUP_TAIL_TRIM, game.snake[0])
+        state.powerup = tool.FancyPowerup(tool.FANCY_POWERUP_GHOST_BITE, game.snake[0])
 
         self.assertTrue(state.maybe_activate_powerup(game))
 
-        self.assertEqual(len(game.snake), 3)
-        self.assertIn("Tail Trim clipped 3", game.last_message)
+        self.assertEqual(state.ghost_bite_ticks, tool.FANCY_GHOST_BITE_TICKS)
+        self.assertIn("Ghost Bite", game.last_message)
 
     def test_snake_fancy_moon_gate_teleports_head(self):
         tool = load_tool_module("snake.py")
@@ -866,6 +885,21 @@ class ToolRiskCoherenceTests(unittest.TestCase):
 
         self.assertFalse(runner.game.game_over)
         self.assertEqual(runner.game.snake[0], tool.Position(5, 5))
+
+        large_game = tool.SnakeGame(width=32, height=18, speed=1)
+        large_state = tool.FancyState(width=32, height=18, rng=random.Random(7))
+        gate_count = large_state.activate_moon_gate(large_game)
+
+        self.assertEqual(gate_count, 6)
+        self.assertEqual(len(set(large_state.moon_gates)), 6)
+        self.assertEqual(
+            large_state.teleport_target(large_state.moon_gates[0]),
+            large_state.moon_gates[1],
+        )
+        self.assertEqual(
+            large_state.teleport_target(large_state.moon_gates[-1]),
+            large_state.moon_gates[0],
+        )
 
     def test_snake_fancy_tail_shield_absorbs_one_self_collision(self):
         tool = load_tool_module("snake.py")
@@ -888,6 +922,26 @@ class ToolRiskCoherenceTests(unittest.TestCase):
         self.assertEqual(runner.game.snake[0], tool.Position(1, 2))
         self.assertEqual(runner.fancy_state.tail_shield_charges, 0)
         self.assertIn("Tail Shield cracked", runner.game.last_message)
+
+    def test_snake_fancy_ghost_bite_allows_self_collision(self):
+        tool = load_tool_module("snake.py")
+        runner = tool.KittySnakeGame(width=10, height=8, speed=1, two_player=False, fancy=True)
+        runner.game.snake = [
+            tool.Position(2, 2),
+            tool.Position(1, 2),
+            tool.Position(1, 1),
+            tool.Position(2, 1),
+        ]
+        runner.game.direction = tool.Direction.UP
+        runner.game.next_direction = tool.Direction.UP
+        runner.game.food = tool.Position(7, 7)
+        runner.fancy_state.ghost_bite_ticks = 10
+
+        runner._advance_game()
+
+        self.assertFalse(runner.game.game_over)
+        self.assertEqual(runner.game.snake[0], tool.Position(1, 2))
+        self.assertIn("Ghost Bite phased", runner.game.last_message)
 
     def test_image_tools_return_nonzero_when_processing_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
