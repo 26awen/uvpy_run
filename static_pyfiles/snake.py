@@ -54,6 +54,7 @@ Usage Examples:
     uv run snake.py --two-player --width 40 --height 20 --speed 6
     uv run snake.py --mode-smooth --width 32 --height 18
     uv run snake.py --mode-kitty --width 32 --height 18
+    uv run snake.py --mode-kitty --fancy --width 32 --height 18
     uv run snake.py --mode-classic
     uv run snake.py --ascii
 
@@ -133,6 +134,20 @@ KITTY_CELL_PIXELS = 18
 KITTY_IMAGE_ID = 260826
 KITTY_PLACEMENT_ID = 1
 KITTY_CHUNK_SIZE = 4096
+FANCY_POWERUP_MOON_GATE = "moon_gate"
+FANCY_POWERUP_GLASS_TAIL = "glass_tail"
+FANCY_POWERUP_PRISM_FRUIT = "prism_fruit"
+FANCY_POWERUP_TYPES = (
+    FANCY_POWERUP_MOON_GATE,
+    FANCY_POWERUP_GLASS_TAIL,
+    FANCY_POWERUP_PRISM_FRUIT,
+)
+FANCY_POWERUP_TTL = 72
+FANCY_POWERUP_SPAWN_FOOD_INTERVAL = 2
+FANCY_MOON_GATE_TICKS = 90
+FANCY_GLASS_TAIL_TICKS = 80
+FANCY_PRISM_TICKS = 70
+FANCY_COMBO_WINDOW_TICKS = 32
 BRAILLE_DOT_BITS = {
     (0, 0): 0x01,
     (0, 1): 0x02,
@@ -1086,7 +1101,264 @@ KITTY_COLORS = {
     "dead": rgb("#d45d5d"),
     "eye": rgb("#07100c"),
     "eye_glint": rgb("#f4fff8"),
+    "moon_gate": rgb("#b88cff"),
+    "moon_gate_core": rgb("#7cc7ff"),
+    "glass_tail": rgb("#9ff7ff"),
+    "glass_tail_core": rgb("#e2fdff"),
+    "prism_red": rgb("#ff6b9d"),
+    "prism_gold": rgb("#ffcc66"),
+    "prism_green": rgb("#7dff9b"),
+    "prism_blue": rgb("#7cc7ff"),
+    "prism_violet": rgb("#c78cff"),
 }
+
+
+@dataclass
+class FancyPowerup:
+    """A temporary board pickup for Kitty fancy mode."""
+
+    kind: str
+    position: Position
+    ttl: int = FANCY_POWERUP_TTL
+
+
+@dataclass
+class FancyParticle:
+    """A tiny board-space particle rendered by the Kitty renderer."""
+
+    row: float
+    col: float
+    dr: float
+    dc: float
+    life: float
+    max_life: float
+    color: RGBColor
+    size: float
+
+
+class FancyState:
+    """Runtime state for Kitty-only fancy mode."""
+
+    def __init__(self, width: int, height: int, rng: random.Random | None = None):
+        self.width = width
+        self.height = height
+        self.rng = rng or random.Random()
+        self.powerup: FancyPowerup | None = None
+        self.particles: list[FancyParticle] = []
+        self.foods_since_powerup = 0
+        self.combo = 0
+        self.combo_timer = 0
+        self.moon_gate_ticks = 0
+        self.moon_gates: tuple[Position, Position] | None = None
+        self.glass_tail_ticks = 0
+        self.glass_tail_charges = 0
+        self.prism_ticks = 0
+        self.pulse = 0.0
+
+    def reset(self) -> None:
+        """Reset all fancy-only state for a fresh run."""
+
+        self.powerup = None
+        self.particles = []
+        self.foods_since_powerup = 0
+        self.combo = 0
+        self.combo_timer = 0
+        self.moon_gate_ticks = 0
+        self.moon_gates = None
+        self.glass_tail_ticks = 0
+        self.glass_tail_charges = 0
+        self.prism_ticks = 0
+        self.pulse = 0.0
+
+    def update_frame(self, dt: float) -> None:
+        """Advance visual-only fancy animation state."""
+
+        self.pulse += dt * 4.0
+        live_particles: list[FancyParticle] = []
+        for particle in self.particles:
+            particle.life -= dt
+            if particle.life <= 0:
+                continue
+            particle.row += particle.dr * dt
+            particle.col += particle.dc * dt
+            live_particles.append(particle)
+        self.particles = live_particles
+
+    def tick(self) -> None:
+        """Advance one logical tick of fancy timers."""
+
+        if self.powerup is not None:
+            self.powerup.ttl -= 1
+            if self.powerup.ttl <= 0:
+                self.powerup = None
+
+        if self.combo_timer > 0:
+            self.combo_timer -= 1
+            if self.combo_timer == 0:
+                self.combo = 0
+
+        if self.moon_gate_ticks > 0:
+            self.moon_gate_ticks -= 1
+            if self.moon_gate_ticks == 0:
+                self.moon_gates = None
+
+        if self.glass_tail_ticks > 0:
+            self.glass_tail_ticks -= 1
+            if self.glass_tail_ticks == 0:
+                self.glass_tail_charges = 0
+
+        if self.prism_ticks > 0:
+            self.prism_ticks -= 1
+
+    def on_food_eaten(self, game: SnakeGame, position: Position) -> None:
+        """Handle fancy scoring, particles, and possible powerup spawn."""
+
+        self.combo += 1
+        self.combo_timer = FANCY_COMBO_WINDOW_TICKS
+        self.foods_since_powerup += 1
+        self.add_burst(position, KITTY_COLORS["food"], count=14, speed=4.2)
+
+        if self.prism_ticks > 0:
+            bonus = POINTS_PER_FOOD * min(4, max(1, self.combo - 1))
+            game.score += bonus
+            game.high_score = max(game.high_score, game.score)
+            game.last_message = f"Prism combo x{self.combo}. +{bonus} shimmer bonus."
+
+        if self.foods_since_powerup >= FANCY_POWERUP_SPAWN_FOOD_INTERVAL:
+            self.foods_since_powerup = 0
+            if self.powerup is None and self.rng.random() < 0.85:
+                self.spawn_powerup(game)
+
+    def spawn_powerup(self, game: SnakeGame) -> bool:
+        """Place a random fancy powerup on an open board cell."""
+
+        position = self.random_open_position(game)
+        if position is None:
+            return False
+
+        self.powerup = FancyPowerup(self.rng.choice(FANCY_POWERUP_TYPES), position)
+        return True
+
+    def random_open_position(self, game: SnakeGame) -> Position | None:
+        """Return a random open position that avoids snake, food, and gates."""
+
+        blocked = set(game.snake)
+        if game.food:
+            blocked.add(game.food)
+        if self.moon_gates:
+            blocked.update(self.moon_gates)
+        if self.powerup:
+            blocked.add(self.powerup.position)
+
+        open_positions = [
+            Position(row, col)
+            for row in range(self.height)
+            for col in range(self.width)
+            if Position(row, col) not in blocked
+        ]
+        if not open_positions:
+            return None
+        return self.rng.choice(open_positions)
+
+    def maybe_activate_powerup(self, game: SnakeGame) -> bool:
+        """Activate a powerup when the snake head reaches it."""
+
+        if self.powerup is None or not game.snake:
+            return False
+        if game.snake[0] != self.powerup.position:
+            return False
+
+        kind = self.powerup.kind
+        position = self.powerup.position
+        self.powerup = None
+
+        if kind == FANCY_POWERUP_MOON_GATE:
+            self.activate_moon_gate(game)
+            game.last_message = "Moon Gate opened. Slip through the violet doors."
+        elif kind == FANCY_POWERUP_GLASS_TAIL:
+            self.glass_tail_ticks = FANCY_GLASS_TAIL_TICKS
+            self.glass_tail_charges = 1
+            game.last_message = "Glass Tail armed. One self-hit will shatter away."
+        elif kind == FANCY_POWERUP_PRISM_FRUIT:
+            self.prism_ticks = FANCY_PRISM_TICKS
+            self.combo_timer = FANCY_COMBO_WINDOW_TICKS
+            game.last_message = "Prism Fruit lit. Keep eating for shimmer bonuses."
+
+        self.add_burst(position, self.powerup_color(kind), count=20, speed=5.4)
+        return True
+
+    def activate_moon_gate(self, game: SnakeGame) -> None:
+        """Create a temporary pair of teleport gates."""
+
+        first = self.random_open_position(game)
+        if first is None:
+            return
+
+        original_powerup = self.powerup
+        self.powerup = FancyPowerup(FANCY_POWERUP_MOON_GATE, first)
+        second = self.random_open_position(game)
+        self.powerup = original_powerup
+        if second is None:
+            return
+
+        self.moon_gates = (first, second)
+        self.moon_gate_ticks = FANCY_MOON_GATE_TICKS
+        self.add_burst(first, KITTY_COLORS["moon_gate"], count=18, speed=3.2)
+        self.add_burst(second, KITTY_COLORS["moon_gate_core"], count=18, speed=3.2)
+
+    def teleport_target(self, position: Position) -> Position:
+        """Return the paired Moon Gate destination for a position."""
+
+        if self.moon_gates is None:
+            return position
+        first, second = self.moon_gates
+        if position == first:
+            return second
+        if position == second:
+            return first
+        return position
+
+    def powerup_color(self, kind: str) -> RGBColor:
+        """Return the primary display color for a fancy powerup."""
+
+        if kind == FANCY_POWERUP_MOON_GATE:
+            return KITTY_COLORS["moon_gate"]
+        if kind == FANCY_POWERUP_GLASS_TAIL:
+            return KITTY_COLORS["glass_tail"]
+        return KITTY_COLORS["prism_gold"]
+
+    def add_burst(
+        self,
+        position: Position,
+        color: RGBColor,
+        count: int,
+        speed: float,
+    ) -> None:
+        """Add a radial particle burst around a board position."""
+
+        center_row = position.row + 0.5
+        center_col = position.col + 0.5
+        colors = [
+            color,
+            KITTY_COLORS["prism_red"],
+            KITTY_COLORS["prism_blue"],
+            KITTY_COLORS["prism_green"],
+        ]
+        for index in range(count):
+            angle = (math.tau * index / count) + self.rng.uniform(-0.18, 0.18)
+            velocity = speed * self.rng.uniform(0.45, 1.0)
+            self.particles.append(
+                FancyParticle(
+                    center_row,
+                    center_col,
+                    math.sin(angle) * velocity,
+                    math.cos(angle) * velocity,
+                    life=self.rng.uniform(0.28, 0.62),
+                    max_life=0.62,
+                    color=self.rng.choice(colors),
+                    size=self.rng.uniform(0.06, 0.13),
+                )
+            )
 
 
 class PixelBuffer:
@@ -1197,6 +1469,31 @@ class PixelBuffer:
             y = start_y + (end_y - start_y) * progress
             self.draw_circle(x, y, radius, color, opacity)
 
+    def draw_diamond(
+        self,
+        center_x: float,
+        center_y: float,
+        radius: float,
+        color: RGBColor,
+        opacity: float = 1.0,
+    ) -> None:
+        """Draw an anti-aliased diamond marker."""
+
+        min_x = math.floor(center_x - radius - 1)
+        max_x = math.ceil(center_x + radius + 1)
+        min_y = math.floor(center_y - radius - 1)
+        max_y = math.ceil(center_y + radius + 1)
+
+        for y in range(min_y, max_y + 1):
+            for x in range(min_x, max_x + 1):
+                distance = (
+                    abs((x + 0.5) - center_x)
+                    + abs((y + 0.5) - center_y)
+                )
+                alpha = (radius + 0.6 - distance) * opacity
+                if alpha > 0:
+                    self.blend_pixel(x, y, color, alpha)
+
 
 class KittySnakeRenderer:
     """Render the snake board as RGB pixels for Kitty graphics."""
@@ -1213,7 +1510,12 @@ class KittySnakeRenderer:
         self.pixel_width = width * cell_pixels
         self.pixel_height = height * cell_pixels
 
-    def render(self, game: SnakeGame, progress: float) -> bytes:
+    def render(
+        self,
+        game: SnakeGame,
+        progress: float,
+        fancy_state: FancyState | None = None,
+    ) -> bytes:
         """Return one RGB frame for the current game state."""
 
         buffer = PixelBuffer(
@@ -1223,8 +1525,14 @@ class KittySnakeRenderer:
         )
         self._draw_grid(buffer)
 
+        if fancy_state is not None:
+            self._draw_fancy_floor(buffer, fancy_state)
+
         if game.food:
-            self._draw_food(buffer, game.food)
+            self._draw_food(buffer, game.food, fancy_state)
+
+        if fancy_state is not None:
+            self._draw_powerup(buffer, fancy_state)
 
         if game.two_player:
             for pos in game.dead_bodies:
@@ -1242,6 +1550,7 @@ class KittySnakeRenderer:
                     KITTY_COLORS["body1_shadow"],
                     KITTY_COLORS["head1"],
                     progress,
+                    fancy_state,
                 )
             if game.alive2:
                 self._draw_snake(
@@ -1255,6 +1564,7 @@ class KittySnakeRenderer:
                     KITTY_COLORS["body2_shadow"],
                     KITTY_COLORS["head2"],
                     progress,
+                    fancy_state,
                 )
         else:
             self._draw_snake(
@@ -1268,7 +1578,11 @@ class KittySnakeRenderer:
                 KITTY_COLORS["body1_shadow"],
                 KITTY_COLORS["head1"],
                 progress,
+                fancy_state,
             )
+
+        if fancy_state is not None:
+            self._draw_particles(buffer, fancy_state)
 
         return bytes(buffer.data)
 
@@ -1302,10 +1616,24 @@ class KittySnakeRenderer:
         center_x, center_y = self._center(float(position.row), float(position.col))
         buffer.draw_circle(center_x, center_y, self.cell_pixels * radius_ratio, color)
 
-    def _draw_food(self, buffer: PixelBuffer, position: Position) -> None:
+    def _draw_food(
+        self,
+        buffer: PixelBuffer,
+        position: Position,
+        fancy_state: FancyState | None = None,
+    ) -> None:
         """Draw a glowing food pellet."""
 
         center_x, center_y = self._center(float(position.row), float(position.col))
+        if fancy_state is not None:
+            pulse = 0.5 + 0.5 * math.sin(fancy_state.pulse * 1.7)
+            buffer.draw_circle(
+                center_x,
+                center_y,
+                self.cell_pixels * (0.46 + pulse * 0.12),
+                KITTY_COLORS["food"],
+                opacity=0.16 + pulse * 0.12,
+            )
         buffer.draw_circle(center_x, center_y, self.cell_pixels * 0.34, KITTY_COLORS["food"])
         buffer.draw_circle(
             center_x - self.cell_pixels * 0.08,
@@ -1313,6 +1641,94 @@ class KittySnakeRenderer:
             self.cell_pixels * 0.14,
             KITTY_COLORS["food_core"],
         )
+
+    def _draw_fancy_floor(self, buffer: PixelBuffer, fancy_state: FancyState) -> None:
+        """Draw active fancy board elements below the snake."""
+
+        if fancy_state.moon_gates:
+            pulse = 0.5 + 0.5 * math.sin(fancy_state.pulse * 2.1)
+            for index, gate in enumerate(fancy_state.moon_gates):
+                center_x, center_y = self._center(float(gate.row), float(gate.col))
+                color = (
+                    KITTY_COLORS["moon_gate"]
+                    if index == 0
+                    else KITTY_COLORS["moon_gate_core"]
+                )
+                buffer.draw_circle(
+                    center_x,
+                    center_y,
+                    self.cell_pixels * (0.52 + pulse * 0.08),
+                    color,
+                    opacity=0.45,
+                )
+                buffer.draw_circle(
+                    center_x,
+                    center_y,
+                    self.cell_pixels * 0.28,
+                    KITTY_COLORS["background"],
+                    opacity=0.86,
+                )
+
+    def _draw_powerup(self, buffer: PixelBuffer, fancy_state: FancyState) -> None:
+        """Draw the active fancy pickup, if any."""
+
+        powerup = fancy_state.powerup
+        if powerup is None:
+            return
+
+        center_x, center_y = self._center(
+            float(powerup.position.row),
+            float(powerup.position.col),
+        )
+        pulse = 0.5 + 0.5 * math.sin(fancy_state.pulse * 2.8)
+
+        if powerup.kind == FANCY_POWERUP_MOON_GATE:
+            buffer.draw_circle(
+                center_x,
+                center_y,
+                self.cell_pixels * (0.34 + pulse * 0.06),
+                KITTY_COLORS["moon_gate"],
+            )
+            buffer.draw_circle(
+                center_x + self.cell_pixels * 0.13,
+                center_y - self.cell_pixels * 0.05,
+                self.cell_pixels * 0.28,
+                KITTY_COLORS["background"],
+                opacity=0.94,
+            )
+        elif powerup.kind == FANCY_POWERUP_GLASS_TAIL:
+            buffer.draw_diamond(
+                center_x,
+                center_y,
+                self.cell_pixels * (0.44 + pulse * 0.06),
+                KITTY_COLORS["glass_tail"],
+            )
+            buffer.draw_diamond(
+                center_x,
+                center_y,
+                self.cell_pixels * 0.2,
+                KITTY_COLORS["glass_tail_core"],
+                opacity=0.85,
+            )
+        else:
+            prism_colors = [
+                KITTY_COLORS["prism_red"],
+                KITTY_COLORS["prism_gold"],
+                KITTY_COLORS["prism_green"],
+                KITTY_COLORS["prism_blue"],
+                KITTY_COLORS["prism_violet"],
+            ]
+            for index, color in enumerate(prism_colors):
+                angle = fancy_state.pulse + math.tau * index / len(prism_colors)
+                x = center_x + math.cos(angle) * self.cell_pixels * 0.16
+                y = center_y + math.sin(angle) * self.cell_pixels * 0.16
+                buffer.draw_circle(
+                    x,
+                    y,
+                    self.cell_pixels * (0.2 + pulse * 0.03),
+                    color,
+                    opacity=0.86,
+                )
 
     def _draw_snake(
         self,
@@ -1326,6 +1742,7 @@ class KittySnakeRenderer:
         shadow_color: RGBColor,
         head_color: RGBColor,
         progress: float,
+        fancy_state: FancyState | None = None,
     ) -> None:
         """Draw a continuous rounded snake body and expressive head."""
 
@@ -1345,6 +1762,8 @@ class KittySnakeRenderer:
         )
         self._draw_tapered_path(buffer, smooth_path, body_color)
         self._draw_tapered_highlight(buffer, smooth_path, highlight_color)
+        if fancy_state is not None and fancy_state.prism_ticks > 0:
+            self._draw_prism_body(buffer, smooth_path, fancy_state)
 
         head_x, head_y = smooth_path[0]
         head_radius = self.cell_pixels * 0.38
@@ -1466,6 +1885,69 @@ class KittySnakeRenderer:
                 buffer.draw_circle(x, y, radius, color, opacity)
 
             traveled += segment_length
+
+    def _draw_prism_body(
+        self,
+        buffer: PixelBuffer,
+        path: list[tuple[float, float]],
+        fancy_state: FancyState,
+    ) -> None:
+        """Overlay rotating prism sparks on an active Prism Fruit body."""
+
+        if len(path) < 2:
+            return
+
+        colors = [
+            KITTY_COLORS["prism_red"],
+            KITTY_COLORS["prism_gold"],
+            KITTY_COLORS["prism_green"],
+            KITTY_COLORS["prism_blue"],
+            KITTY_COLORS["prism_violet"],
+        ]
+        total_length = max(1.0, self._path_length(path))
+        traveled = 0.0
+        spark_every = max(3.0, self.cell_pixels * 0.55)
+
+        for index in range(1, len(path)):
+            start_x, start_y = path[index - 1]
+            end_x, end_y = path[index]
+            segment_length = math.hypot(end_x - start_x, end_y - start_y)
+            steps = max(1, int(segment_length / spark_every))
+
+            for step in range(steps + 1):
+                segment_progress = step / steps
+                distance = traveled + segment_length * segment_progress
+                path_progress = min(1.0, distance / total_length)
+                if path_progress > 0.86:
+                    continue
+                color_index = int((distance / spark_every) + fancy_state.pulse) % len(colors)
+                x = start_x + (end_x - start_x) * segment_progress
+                y = start_y + (end_y - start_y) * segment_progress
+                buffer.draw_circle(
+                    x,
+                    y,
+                    self._body_radius(path_progress) * 0.44,
+                    colors[color_index],
+                    opacity=0.5,
+                )
+
+            traveled += segment_length
+
+    def _draw_particles(self, buffer: PixelBuffer, fancy_state: FancyState) -> None:
+        """Draw short-lived fancy mode particles over the board."""
+
+        for particle in fancy_state.particles:
+            if particle.max_life <= 0:
+                continue
+            alpha = max(0.0, min(1.0, particle.life / particle.max_life))
+            center_x, center_y = self._center(particle.row - 0.5, particle.col - 0.5)
+            buffer.draw_circle(
+                center_x,
+                center_y,
+                self.cell_pixels * particle.size,
+                particle.color,
+                opacity=alpha,
+            )
 
     def _draw_tapered_highlight(
         self,
@@ -1606,6 +2088,7 @@ class KittySnakeGame:
         height: int,
         speed: int,
         two_player: bool,
+        fancy: bool = False,
     ):
         self.game = SnakeGame(
             width,
@@ -1619,9 +2102,11 @@ class KittySnakeGame:
         self.width = width
         self.height = height
         self.two_player = two_player
+        self.fancy_state = FancyState(width, height) if fancy else None
         self.input_buffer = b""
         self.running = True
         self.next_tick = time.monotonic() + self.game._logic_interval
+        self.last_frame_at = time.monotonic()
 
     def run(self) -> None:
         """Run the raw terminal game loop."""
@@ -1651,6 +2136,9 @@ class KittySnakeGame:
 
         while self.running:
             now = time.monotonic()
+            if self.fancy_state is not None:
+                self.fancy_state.update_frame(now - self.last_frame_at)
+            self.last_frame_at = now
             self._handle_input(now)
 
             if not self.game.paused and not self.game.game_over:
@@ -1674,10 +2162,101 @@ class KittySnakeGame:
 
         self.game._begin_step_animation()
         self.game.ticks += 1
-        if self.game.two_player:
+        if self.fancy_state is not None and not self.game.two_player:
+            self.fancy_state.tick()
+            self._update_single_player_fancy()
+        elif self.game.two_player:
             self.game._update_two_player()
         else:
             self.game._update_single_player()
+
+    def _update_single_player_fancy(self) -> None:
+        """Update single-player logic with Kitty fancy powerups."""
+
+        fancy_state = self.fancy_state
+        if fancy_state is None:
+            return
+
+        self.game.direction = self.game.next_direction
+        new_head = self.game.snake[0] + self.game.direction
+
+        if self.game._is_out_of_bounds(new_head):
+            self.game._finish_game("Wall hit. Press R for a clean restart.")
+            return
+
+        gate_target = fancy_state.teleport_target(new_head)
+        if gate_target != new_head:
+            fancy_state.add_burst(new_head, KITTY_COLORS["moon_gate"], count=12, speed=3.0)
+            fancy_state.add_burst(
+                gate_target,
+                KITTY_COLORS["moon_gate_core"],
+                count=12,
+                speed=3.0,
+            )
+            new_head = gate_target
+
+        will_grow = new_head == self.game.food
+        body_to_check = self.game.snake if will_grow else self.game.snake[:-1]
+        collision_index = next(
+            (
+                index
+                for index, position in enumerate(body_to_check)
+                if position == new_head
+            ),
+            None,
+        )
+
+        if collision_index is not None:
+            if fancy_state.glass_tail_charges <= 0:
+                self.game._finish_game("Tail collision. Press R and try a wider turn.")
+                return
+
+            fancy_state.glass_tail_charges = 0
+            fancy_state.glass_tail_ticks = 0
+            self.game.snake = [new_head] + self.game.snake[:collision_index]
+            self.game.last_message = "Glass Tail shattered. You slipped through once."
+            fancy_state.add_burst(new_head, KITTY_COLORS["glass_tail"], count=24, speed=5.2)
+            fancy_state.maybe_activate_powerup(self.game)
+            return
+
+        self.game.snake.insert(0, new_head)
+
+        if will_grow:
+            self.game.score += POINTS_PER_FOOD
+            self.game.high_score = max(self.game.high_score, self.game.score)
+            self.game.food_eaten += 1
+            self.game.last_message = f"Snack collected. +{POINTS_PER_FOOD} points."
+            fancy_state.on_food_eaten(self.game, new_head)
+            self._generate_fancy_food()
+        else:
+            self.game.snake.pop()
+
+        fancy_state.maybe_activate_powerup(self.game)
+
+    def _generate_fancy_food(self) -> None:
+        """Generate food while avoiding fancy-only board objects."""
+
+        fancy_state = self.fancy_state
+        occupied_positions = set(self.game.snake)
+        if fancy_state is not None:
+            if fancy_state.powerup:
+                occupied_positions.add(fancy_state.powerup.position)
+            if fancy_state.moon_gates:
+                occupied_positions.update(fancy_state.moon_gates)
+
+        open_positions = [
+            Position(row, col)
+            for row in range(self.height)
+            for col in range(self.width)
+            if Position(row, col) not in occupied_positions
+        ]
+
+        if not open_positions:
+            self.game.food = None
+            self.game._finish_game("Board cleared. Perfect run.", won=True)
+            return
+
+        self.game.food = random.choice(open_positions)
 
     def _animation_progress(self) -> float:
         """Return current pixel interpolation progress."""
@@ -1704,6 +2283,8 @@ class KittySnakeGame:
                 continue
             if key == "r":
                 self.game.action_restart()
+                if self.fancy_state is not None:
+                    self.fancy_state.reset()
                 self.next_tick = now + self.game._logic_interval
                 continue
             self._queue_movement(key)
@@ -1785,7 +2366,7 @@ class KittySnakeGame:
         """Render one Kitty graphics frame plus text HUD."""
 
         progress = self._animation_progress()
-        rgb_data = self.renderer.render(self.game, progress)
+        rgb_data = self.renderer.render(self.game, progress, self.fancy_state)
         columns = self.width * 2
         rows = self.height
         commands = kitty_graphics_chunks(
@@ -1798,7 +2379,8 @@ class KittySnakeGame:
 
         sys.stdout.write("\033[H\033[2K")
         sys.stdout.write("\033[1;38;2;125;255;155muvpy.run Snake\033[0m")
-        sys.stdout.write("  \033[2mkitty pixel mode\033[0m")
+        mode_label = "kitty fancy mode" if self.fancy_state is not None else "kitty pixel mode"
+        sys.stdout.write(f"  \033[2m{mode_label}\033[0m")
         sys.stdout.write("\033[2;1H\033[2K")
         sys.stdout.write(self._score_line())
         sys.stdout.write("\033[3;1H")
@@ -1826,7 +2408,29 @@ class KittySnakeGame:
             f"\033[38;2;125;255;155mscore {self.game.score}\033[0m  "
             f"\033[38;2;255;204;102mbest {self.game.high_score}\033[0m  "
             f"\033[2mfood {self.game.food_eaten}  speed {self.game.speed}/15\033[0m"
+            f"{self._fancy_score_suffix()}"
         )
+
+    def _fancy_score_suffix(self) -> str:
+        """Return compact fancy status text for the HUD."""
+
+        fancy_state = self.fancy_state
+        if fancy_state is None:
+            return ""
+
+        statuses: list[str] = []
+        if fancy_state.combo > 1:
+            statuses.append(f"combo x{fancy_state.combo}")
+        if fancy_state.prism_ticks > 0:
+            statuses.append("prism")
+        if fancy_state.glass_tail_charges > 0:
+            statuses.append("glass tail")
+        if fancy_state.moon_gates:
+            statuses.append("moon gate")
+
+        if not statuses:
+            return ""
+        return "  \033[38;2;199;140;255m" + " / ".join(statuses) + "\033[0m"
 
     def _message_line(self) -> str:
         """Return the current game message with simple ANSI styling."""
@@ -1901,6 +2505,11 @@ class KittySnakeGame:
     is_flag=True,
     help="Use Kitty graphics for true pixel animation.",
 )
+@click.option(
+    "--fancy",
+    is_flag=True,
+    help="Enable Kitty-only fancy powerups, combo effects, and particles.",
+)
 def main(
     width: int,
     height: int,
@@ -1910,6 +2519,7 @@ def main(
     mode_classic: bool,
     mode_smooth: bool,
     mode_kitty: bool,
+    fancy: bool,
 ) -> None:
     """
     Classic Snake in the terminal.
@@ -1924,10 +2534,15 @@ def main(
             "Choose only one of --mode-classic, --mode-smooth, or --mode-kitty."
         )
 
+    if fancy and not mode_kitty:
+        raise click.UsageError("--fancy can only be used with --mode-kitty.")
+    if fancy and two_player:
+        raise click.UsageError("--fancy currently supports single-player Kitty mode only.")
+
     if mode_kitty:
         if ascii_only:
             raise click.UsageError("--ascii cannot be combined with --mode-kitty.")
-        KittySnakeGame(width, height, speed, two_player).run()
+        KittySnakeGame(width, height, speed, two_player, fancy).run()
         return
 
     render_mode = RENDER_MODE_CLASSIC if mode_classic else RENDER_MODE_SMOOTH

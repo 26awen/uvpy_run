@@ -2,6 +2,7 @@ import ast
 import importlib.util
 import json
 import os
+import random
 import re
 import subprocess
 import sys
@@ -755,6 +756,104 @@ class ToolRiskCoherenceTests(unittest.TestCase):
         self.assertGreater(len(path), 3)
         self.assertNotIn((50.0, 30.0), path)
         self.assertGreater(renderer._body_radius(0.5), renderer._body_radius(1.0))
+
+    def test_snake_fancy_mode_is_kitty_only_single_player(self):
+        fancy_without_kitty = subprocess.run(
+            [sys.executable, str(STATIC_PYFILES_ROOT / "snake.py"), "--fancy"],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        fancy_two_player = subprocess.run(
+            [
+                sys.executable,
+                str(STATIC_PYFILES_ROOT / "snake.py"),
+                "--mode-kitty",
+                "--fancy",
+                "--two-player",
+            ],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+
+        self.assertNotEqual(fancy_without_kitty.returncode, 0)
+        self.assertIn("--fancy can only be used with --mode-kitty", fancy_without_kitty.stderr)
+        self.assertNotEqual(fancy_two_player.returncode, 0)
+        self.assertIn("single-player Kitty mode", fancy_two_player.stderr)
+
+    def test_snake_fancy_powerup_spawns_on_open_cell(self):
+        tool = load_tool_module("snake.py")
+        game = tool.SnakeGame(width=10, height=8, speed=1)
+        game.food = tool.Position(4, 4)
+        state = tool.FancyState(width=10, height=8, rng=random.Random(4))
+
+        self.assertTrue(state.spawn_powerup(game))
+
+        self.assertIsNotNone(state.powerup)
+        self.assertNotIn(state.powerup.position, game.snake)
+        self.assertNotEqual(state.powerup.position, game.food)
+
+    def test_snake_kitty_renderer_draws_fancy_state(self):
+        tool = load_tool_module("snake.py")
+        game = tool.SnakeGame(width=10, height=8, speed=1)
+        renderer = tool.KittySnakeRenderer(width=10, height=8, cell_pixels=4)
+        state = tool.FancyState(width=10, height=8, rng=random.Random(5))
+        state.powerup = tool.FancyPowerup(
+            tool.FANCY_POWERUP_PRISM_FRUIT,
+            tool.Position(3, 3),
+        )
+        state.moon_gates = (tool.Position(1, 1), tool.Position(6, 8))
+        state.prism_ticks = 5
+        state.add_burst(tool.Position(4, 4), tool.KITTY_COLORS["prism_blue"], 4, 2.0)
+
+        frame = renderer.render(game, progress=1.0, fancy_state=state)
+
+        self.assertEqual(len(frame), renderer.pixel_width * renderer.pixel_height * 3)
+        self.assertGreater(len(set(frame)), 1)
+
+    def test_snake_fancy_moon_gate_teleports_head(self):
+        tool = load_tool_module("snake.py")
+        runner = tool.KittySnakeGame(width=10, height=8, speed=1, two_player=False, fancy=True)
+        runner.game.snake = [
+            tool.Position(2, 2),
+            tool.Position(2, 1),
+            tool.Position(2, 0),
+        ]
+        runner.game.direction = tool.Direction.RIGHT
+        runner.game.next_direction = tool.Direction.RIGHT
+        runner.game.food = tool.Position(7, 7)
+        runner.fancy_state.moon_gates = (tool.Position(2, 3), tool.Position(5, 5))
+        runner.fancy_state.moon_gate_ticks = 10
+
+        runner._advance_game()
+
+        self.assertFalse(runner.game.game_over)
+        self.assertEqual(runner.game.snake[0], tool.Position(5, 5))
+
+    def test_snake_fancy_glass_tail_absorbs_one_self_collision(self):
+        tool = load_tool_module("snake.py")
+        runner = tool.KittySnakeGame(width=10, height=8, speed=1, two_player=False, fancy=True)
+        runner.game.snake = [
+            tool.Position(2, 2),
+            tool.Position(1, 2),
+            tool.Position(1, 1),
+            tool.Position(2, 1),
+        ]
+        runner.game.direction = tool.Direction.UP
+        runner.game.next_direction = tool.Direction.UP
+        runner.game.food = tool.Position(7, 7)
+        runner.fancy_state.glass_tail_charges = 1
+        runner.fancy_state.glass_tail_ticks = 10
+
+        runner._advance_game()
+
+        self.assertFalse(runner.game.game_over)
+        self.assertEqual(runner.game.snake[0], tool.Position(1, 2))
+        self.assertEqual(runner.fancy_state.glass_tail_charges, 0)
+        self.assertIn("Glass Tail shattered", runner.game.last_message)
 
     def test_image_tools_return_nonzero_when_processing_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
