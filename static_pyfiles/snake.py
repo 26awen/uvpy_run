@@ -1673,7 +1673,6 @@ class KittySnakeRenderer:
         """Draw active fancy board elements below the snake."""
 
         if fancy_state.is_fever_active():
-            pulse = 0.5 + 0.5 * math.sin(fancy_state.pulse * 2.4)
             for row in range(1, self.height):
                 if row % 3 == 0:
                     y = row * self.cell_pixels
@@ -1684,13 +1683,6 @@ class KittySnakeRenderer:
                         1,
                         KITTY_COLORS["prism_violet"],
                     )
-            buffer.draw_circle(
-                self.pixel_width * 0.5,
-                self.pixel_height * 0.5,
-                min(self.pixel_width, self.pixel_height) * (0.35 + pulse * 0.05),
-                KITTY_COLORS["prism_blue"],
-                opacity=0.035,
-            )
 
         if fancy_state.moon_gates:
             pulse = 0.5 + 0.5 * math.sin(fancy_state.pulse * 2.1)
