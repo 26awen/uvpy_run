@@ -26,11 +26,15 @@ The app currently serves:
 Use these checks before handing off backend or template changes:
 
 ```bash
-uv run python -m py_compile main.py tool_metadata.py static_pyfiles/*.py
+uv run python -m py_compile catalog_lint.py main.py tool_metadata.py static_pyfiles/*.py
 ```
 
 ```bash
 uv run python -m unittest discover -s tests
+```
+
+```bash
+uv run python catalog_lint.py
 ```
 
 ```bash
@@ -196,6 +200,12 @@ Preferred script behavior:
   "What it does" panel stays scannable.
 - Avoid hidden network or filesystem behavior.
 
+Run the local catalog lint before handing off script or metadata changes:
+
+```bash
+uv run python catalog_lint.py
+```
+
 ## Security Model
 
 uvpy.run does not execute scripts on the server for users. It serves raw Python
@@ -254,7 +264,7 @@ rules for future coding agents.
 - [x] Ensure each tool supports `--help` where appropriate.
 - [x] Review scripts for naming, examples and side effects.
 - [x] Add tests for catalog metadata, usage examples and CLI help.
-- [ ] Add a local metadata lint command.
+- [x] Add a local metadata lint command.
 - [ ] Consider clearer public aliases for tools whose URLs should not be renamed casually.
 
 Current stable categories are `Developer`, `File`, `Game`, `Image`, `Network`,

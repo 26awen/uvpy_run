@@ -53,13 +53,19 @@ FLASK_SECRET=dev FLASK_DEBUG=1 uv run flask --app main run --host 127.0.0.1 --po
 Compile check:
 
 ```bash
-uv run python -m py_compile main.py tool_metadata.py static_pyfiles/*.py
+uv run python -m py_compile catalog_lint.py main.py tool_metadata.py static_pyfiles/*.py
 ```
 
 Unit tests:
 
 ```bash
 uv run python -m unittest discover -s tests
+```
+
+Catalog metadata lint:
+
+```bash
+uv run python catalog_lint.py
 ```
 
 Route smoke check:
@@ -88,8 +94,9 @@ PY
 
 For backend or template changes, run:
 
-- `uv run python -m py_compile main.py tool_metadata.py static_pyfiles/*.py`
+- `uv run python -m py_compile catalog_lint.py main.py tool_metadata.py static_pyfiles/*.py`
 - `uv run python -m unittest discover -s tests`
+- `uv run python catalog_lint.py`
 - The route smoke check above.
 
 For UX changes, also inspect at least:
